@@ -4,9 +4,9 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/siti-nabila/orm/internal/config"
-	"github.com/siti-nabila/orm/internal/db"
-	"github.com/siti-nabila/orm/internal/dialect"
+	"github.com/siti-nabila/orm/config"
+	"github.com/siti-nabila/orm/db"
+	"github.com/siti-nabila/orm/dialect"
 )
 
 type (

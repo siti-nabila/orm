@@ -1,6 +1,6 @@
 package builder
 
-import "github.com/siti-nabila/orm/internal/mapper"
+import "github.com/siti-nabila/orm/mapper"
 
 func GenerateValuesFromMeta(cols []mapper.ColumnMeta) []any {
 	out := make([]any, len(cols))

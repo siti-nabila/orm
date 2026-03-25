@@ -3,9 +3,9 @@ package builder
 import (
 	"strings"
 
-	"github.com/siti-nabila/orm/internal/config"
-	"github.com/siti-nabila/orm/internal/dialect"
-	"github.com/siti-nabila/orm/internal/mapper"
+	"github.com/siti-nabila/orm/config"
+	"github.com/siti-nabila/orm/dialect"
+	"github.com/siti-nabila/orm/mapper"
 )
 
 func GenerateColumnListQuery(d dialect.Dialector, quote bool, cols []mapper.ColumnMeta) string {

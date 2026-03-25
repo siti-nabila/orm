@@ -3,9 +3,9 @@ package builder
 import (
 	"fmt"
 
-	"github.com/siti-nabila/orm/internal/config"
-	"github.com/siti-nabila/orm/internal/dialect"
-	"github.com/siti-nabila/orm/internal/mapper"
+	"github.com/siti-nabila/orm/config"
+	"github.com/siti-nabila/orm/dialect"
+	"github.com/siti-nabila/orm/mapper"
 	"github.com/siti-nabila/orm/pkg/helper"
 )
 

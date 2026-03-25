@@ -3,10 +3,10 @@ package orm
 import (
 	"context"
 
-	"github.com/siti-nabila/orm/internal/builder"
-	"github.com/siti-nabila/orm/internal/db"
-	"github.com/siti-nabila/orm/internal/dialect"
-	"github.com/siti-nabila/orm/internal/mapper"
+	"github.com/siti-nabila/orm/builder"
+	"github.com/siti-nabila/orm/db"
+	"github.com/siti-nabila/orm/dialect"
+	"github.com/siti-nabila/orm/mapper"
 	"github.com/siti-nabila/orm/pkg/dictionary"
 	"github.com/siti-nabila/orm/pkg/helper"
 )

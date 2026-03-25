@@ -1,10 +1,10 @@
 package orm
 
 import (
-	"github.com/siti-nabila/orm/internal/builder"
-	"github.com/siti-nabila/orm/internal/config"
-	"github.com/siti-nabila/orm/internal/db"
-	"github.com/siti-nabila/orm/internal/mapper"
+	"github.com/siti-nabila/orm/builder"
+	"github.com/siti-nabila/orm/config"
+	"github.com/siti-nabila/orm/db"
+	"github.com/siti-nabila/orm/mapper"
 	"github.com/siti-nabila/orm/pkg/dictionary"
 )
 

@@ -3,7 +3,7 @@ package db
 import (
 	"database/sql"
 
-	"github.com/siti-nabila/orm/internal/dialect"
+	"github.com/siti-nabila/orm/dialect"
 )
 
 func (tx *Tx) Exec(query string, args ...any) (sql.Result, error) {
