@@ -1,0 +1,6 @@
+errors:
+  err_placeholder_not_supported:
+    code: 4100
+    en: "%s does not support this placeholder type."
+    id: "%s tidak mendukung tipe placeholder ini."
+

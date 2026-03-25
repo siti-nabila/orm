@@ -1,0 +1,10 @@
+errors:
+  err_db_conn:
+    code: 4000
+    en: "Database connection error."
+    id: "Kesalahan koneksi database."
+  err_db_placeholder:
+    code: 4001
+    en: "Database placeholder error."
+    id: "Kesalahan placeholder database."
+
