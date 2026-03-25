@@ -2,8 +2,6 @@ package normalizeerr
 
 import (
 	"strings"
-
-	"github.com/siti-nabila/orm/pkg/dictionary"
 )
 
 func normalizeOracle(err error) error {
@@ -13,27 +11,27 @@ func normalizeOracle(err error) error {
 	switch {
 	case strings.Contains(msg, "ORA-00001"):
 		return &DBError{
-			Kind:    dictionary.ErrDuplicateRow,
+			Kind:    KindDuplicateRow,
 			Dialect: dialectName,
 			Raw:     err,
 		}
 
 	case strings.Contains(msg, "ORA-02291"), strings.Contains(msg, "ORA-02292"):
 		return &DBError{
-			Kind:    dictionary.ErrForeignKey,
+			Kind:    KindForeignKey,
 			Dialect: dialectName,
 			Raw:     err,
 		}
 	case strings.Contains(msg, "ORA-01403"), strings.Contains(msg, "ORA-01403"):
 		return &DBError{
-			Kind:    dictionary.ErrRowNotFound,
+			Kind:    KindRowNotFound,
 			Dialect: dialectName,
 			Raw:     err,
 		}
 	}
 
 	return &DBError{
-		Kind:    dictionary.ErrDBUnknown,
+		Kind:    KindUnknown,
 		Dialect: dialectName,
 		Raw:     err,
 	}

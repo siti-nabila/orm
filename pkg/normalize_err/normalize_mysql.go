@@ -4,7 +4,6 @@ import (
 	"errors"
 
 	mysqlDriver "github.com/go-sql-driver/mysql"
-	"github.com/siti-nabila/orm/pkg/dictionary"
 )
 
 func normalizeMySQL(err error) error {
@@ -18,14 +17,14 @@ func normalizeMySQL(err error) error {
 
 		case 1062: // duplicate entry
 			return &DBError{
-				Kind:    dictionary.ErrDuplicateRow,
+				Kind:    KindDuplicateRow,
 				Dialect: dialectName,
 				Raw:     err,
 			}
 
 		case 1452, 1451: // cannot add/update child row: FK fails
 			return &DBError{
-				Kind:    dictionary.ErrForeignKey,
+				Kind:    KindForeignKey,
 				Dialect: dialectName,
 				Raw:     err,
 			}
@@ -34,7 +33,7 @@ func normalizeMySQL(err error) error {
 	}
 
 	return &DBError{
-		Kind:    dictionary.ErrDBUnknown,
+		Kind:    KindUnknown,
 		Dialect: dialectName,
 		Raw:     err,
 	}

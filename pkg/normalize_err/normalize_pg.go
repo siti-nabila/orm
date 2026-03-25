@@ -5,7 +5,6 @@ import (
 	"errors"
 
 	"github.com/lib/pq"
-	"github.com/siti-nabila/orm/pkg/dictionary"
 )
 
 func normalizePostgres(err error) error {
@@ -20,7 +19,7 @@ func normalizePostgres(err error) error {
 
 		case "23505": // duplicate
 			return &DBError{
-				Kind:       dictionary.ErrDuplicateRow,
+				Kind:       KindDuplicateRow,
 				Dialect:    dialectName,
 				Constraint: pqErr.Constraint,
 				Raw:        err,
@@ -28,7 +27,7 @@ func normalizePostgres(err error) error {
 
 		case "23503": // foreign key
 			return &DBError{
-				Kind:       dictionary.ErrForeignKey,
+				Kind:       KindForeignKey,
 				Dialect:    dialectName,
 				Constraint: pqErr.Constraint,
 				Raw:        err,
@@ -36,16 +35,16 @@ func normalizePostgres(err error) error {
 		}
 	}
 
-	if errors.Is(err, sql.ErrNoRows) {
+	if err == sql.ErrNoRows {
 		return &DBError{
-			Kind:    dictionary.ErrRowNotFound,
+			Kind:    KindRowNotFound,
 			Dialect: dialectName,
 			Raw:     err,
 		}
 	}
 
 	return &DBError{
-		Kind:    dictionary.ErrDBUnknown,
+		Kind:    KindUnknown,
 		Dialect: dialectName,
 		Raw:     err,
 	}

@@ -2,13 +2,19 @@ package normalizeerr
 
 import (
 	"strings"
+)
 
-	"github.com/siti-nabila/orm/pkg/dictionary"
+const (
+	KindUnknown      Kind = "unknown"
+	KindDuplicateRow Kind = "duplicate_row"
+	KindForeignKey   Kind = "foreign_key"
+	KindRowNotFound  Kind = "row_not_found"
 )
 
 type (
+	Kind    string
 	DBError struct {
-		Kind       error
+		Kind       Kind
 		Dialect    string
 		Constraint string
 		Raw        error
@@ -19,14 +25,14 @@ func (e *DBError) Error() string {
 	if e.Raw != nil {
 		return e.Raw.Error()
 	}
-	if e.Kind != nil {
-		return e.Kind.Error()
+	if e.Kind != "" {
+		return string(e.Kind)
 	}
 	return "unknown database error"
 }
 
 func (e *DBError) Unwrap() error {
-	return e.Kind
+	return e.Raw
 }
 
 func Normalize(dialect string, err error) error {
@@ -43,7 +49,7 @@ func Normalize(dialect string, err error) error {
 		return normalizeMySQL(err)
 	default:
 		return &DBError{
-			Kind:    dictionary.ErrDBUnknown,
+			Kind:    KindUnknown,
 			Dialect: dialect,
 			Raw:     err,
 		}
