@@ -23,7 +23,7 @@ func (d Postgres) PlaceholderByName(n string) string {
 }
 
 func (d Postgres) QuoteIdentifier(s string) string {
-	return `"` + s + `"`
+	return s
 }
 
 func (d Postgres) SupportReturning() bool {

@@ -7,11 +7,11 @@ func (s *SqlTransactionAdapter) Create(v any) error {
 }
 
 func (s *SqlTransactionAdapter) Commit() error {
-	return s.tx.Commit()
+	return s.orm.Commit()
 }
 
 func (s *SqlTransactionAdapter) Rollback() error {
-	return s.tx.Rollback()
+	return s.orm.Rollback()
 }
 
 func (s *SqlTransactionAdapter) SetLogger(l logger.Logger, debug bool) {

@@ -11,4 +11,19 @@ errors:
     code: 4002
     en: "Query is empty."
     id: "Query kosong."
-
+  err_duplicate_row:
+    code: 4003
+    en: "Duplicate row."
+    id: "Baris duplikat."
+  err_row_not_found:
+    code: 4004
+    en: "No rows found."
+    id: "Tidak ada baris yang ditemukan."
+  err_db_unknown:
+    code: 4005
+    en: "Unknown database error."
+    id: "Kesalahan database tidak diketahui."
+  err_foreign_key:
+    code: 4006
+    en: "Foreign key constraint error."
+    id: "Kesalahan relasi foreign key."

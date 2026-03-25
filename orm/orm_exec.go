@@ -9,6 +9,7 @@ import (
 	"github.com/siti-nabila/orm/mapper"
 	"github.com/siti-nabila/orm/pkg/dictionary"
 	"github.com/siti-nabila/orm/pkg/helper"
+	normalizeerr "github.com/siti-nabila/orm/pkg/normalize_err"
 )
 
 func (o *ORM) Create(ctx context.Context, v any) error {
@@ -33,13 +34,18 @@ func (o *ORM) Create(ctx context.Context, v any) error {
 	// if dialect supports returning primary key, then use query row and scan value to pkCol
 	if pkCol != nil && d.SupportReturning() {
 		row := o.executor.QueryRow(query, args...)
-		return row.Scan(pkCol.FieldSrc.Addr().Interface())
+
+		if err := row.Scan(pkCol.FieldSrc.Addr().Interface()); err != nil {
+			return normalizeerr.Normalize(d.Name(), err)
+		}
+		pkCol.Value = pkCol.FieldSrc.Interface()
+		return nil
 	}
 
 	// if dialect does not support returning primary key, then use exec and check last insert id
 	result, err := o.executor.Exec(query, args...)
 	if err != nil {
-		return err
+		return normalizeerr.Normalize(d.Name(), err)
 	}
 
 	if pkCol != nil && helper.IsIntKind(pkCol.FieldSrc.Interface()) {
