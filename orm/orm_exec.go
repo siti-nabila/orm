@@ -2,6 +2,7 @@ package orm
 
 import (
 	"context"
+	"time"
 
 	"github.com/siti-nabila/orm/builder"
 	"github.com/siti-nabila/orm/db"
@@ -13,6 +14,18 @@ import (
 )
 
 func (o *ORM) Create(ctx context.Context, v any) error {
+	var (
+		err          error
+		start        = time.Now()
+		query        string
+		args         []any
+		filteredCols []mapper.ColumnMeta
+		d            dialect.Dialector
+	)
+
+	defer func() {
+		o.log(query, d, filteredCols, args, start, err)
+	}()
 	meta, err := mapper.Parse(v, o.config.UseSnakeCase)
 	if err != nil {
 		return err
@@ -21,21 +34,18 @@ func (o *ORM) Create(ctx context.Context, v any) error {
 	withReturningPrimary := true
 
 	mode := o.placeholderMode()
-	d := o.Dialect()
+	d = o.Dialect()
 	query, args, pkCol, filteredCols := builder.BuildInsertQuery(meta, d, o.config, mode, withReturningPrimary)
 
 	if query == "" {
 		return dictionary.ErrDBQueryEmpty
 	}
-	if o.logger != nil && o.debug {
-		o.logger.Log(query, d, filteredCols, args)
-	}
 
 	// if dialect supports returning primary key, then use query row and scan value to pkCol
 	if pkCol != nil && d.SupportReturning() {
-		row := o.executor.QueryRow(query, args...)
+		row := o.executor.QueryRowContext(ctx, query, args...)
 
-		if err := row.Scan(pkCol.FieldSrc.Addr().Interface()); err != nil {
+		if err = row.Scan(pkCol.FieldSrc.Addr().Interface()); err != nil {
 			return normalizeerr.Normalize(d.Name(), err)
 		}
 		pkCol.Value = pkCol.FieldSrc.Interface()
@@ -43,7 +53,7 @@ func (o *ORM) Create(ctx context.Context, v any) error {
 	}
 
 	// if dialect does not support returning primary key, then use exec and check last insert id
-	result, err := o.executor.Exec(query, args...)
+	result, err := o.executor.ExecContext(ctx, query, args...)
 	if err != nil {
 		return normalizeerr.Normalize(d.Name(), err)
 	}
@@ -93,4 +103,12 @@ func (o *ORM) Rollback() error {
 
 func (o *ORM) Dialect() dialect.Dialector {
 	return o.executor.Dialect()
+}
+
+func (o *ORM) log(query string, d dialect.Dialector, cols []mapper.ColumnMeta, args []any, start time.Time, err error) {
+	if o.logger == nil || !o.debug || query == "" {
+		return
+	}
+	duration := time.Since(start)
+	o.logger.Log(query, d, cols, args, duration, err)
 }
