@@ -12,3 +12,10 @@ type (
 		dialect dialect.Dialector
 	}
 )
+
+func NewTx(tx *sql.Tx, dialect dialect.Dialector) *Tx {
+	return &Tx{
+		tx:      tx,
+		dialect: dialect,
+	}
+}
