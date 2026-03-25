@@ -8,18 +8,32 @@ import (
 	"github.com/siti-nabila/orm/mapper"
 )
 
-func GenerateColumnListQuery(d dialect.Dialector, quote bool, cols []mapper.ColumnMeta) string {
-	if len(cols) <= 0 {
-		return ""
+func RenderColumnNames(
+	d dialect.Dialector,
+	quote bool,
+	cols []mapper.ColumnMeta,
+) []string {
+	if len(cols) == 0 {
+		return nil
 	}
+
 	out := make([]string, len(cols))
-	for idx, v := range cols {
-		name := v.Name
+	for i, c := range cols {
+		name := c.Name
 		if quote {
 			name = d.QuoteIdentifier(name)
 		}
-		out[idx] = name
-
+		out[i] = name
 	}
-	return strings.Join(out, config.QuerySeperator)
+
+	return out
+}
+
+func GenerateColumnListQuery(
+	d dialect.Dialector,
+	quote bool,
+	cols []mapper.ColumnMeta,
+) string {
+	names := RenderColumnNames(d, quote, cols)
+	return strings.Join(names, config.QuerySeperator)
 }

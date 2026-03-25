@@ -7,4 +7,8 @@ errors:
     code: 4001
     en: "Database placeholder error."
     id: "Kesalahan placeholder database."
+  err_db_query_empty:
+    code: 4002
+    en: "Query is empty."
+    id: "Query kosong."
 

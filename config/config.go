@@ -6,6 +6,7 @@ type (
 		QuoteIdentifier bool
 		UseSnakeCase    bool
 		PlaceholderMode PlaceholderMode
+		EnableDebug     bool
 	}
 )
 

@@ -11,6 +11,7 @@ var (
 
 	ErrDBConn        error
 	ErrDBPlaceholder error
+	ErrDBQueryEmpty  error
 	//go:embed err_list.yaml
 
 	errList []byte
@@ -22,4 +23,5 @@ func init() {
 
 	ErrDBConn = errPack.NewError("err_db_conn")
 	ErrDBPlaceholder = errPack.NewError("err_db_placeholder")
+	ErrDBQueryEmpty = errPack.NewError("err_db_query_empty")
 }

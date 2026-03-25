@@ -9,30 +9,56 @@ import (
 	"github.com/siti-nabila/orm/pkg/helper"
 )
 
-func BuildInsertQuery(meta *mapper.Meta, d dialect.Dialector, cfg config.Config, mode config.PlaceholderMode, returningPk bool) (string, []any, *mapper.ColumnMeta) {
-	// initialize colums, values, and table
+func BuildInsertQuery(
+	meta *mapper.Meta,
+	d dialect.Dialector,
+	cfg config.Config,
+	mode config.PlaceholderMode,
+	returningPk bool,
+) (string, []any, *mapper.ColumnMeta, []mapper.ColumnMeta) {
+
 	cols := filterInsertColumnsQuery(meta.Columns)
-	colList := GenerateColumnListQuery(d, cfg.QuoteIdentifier, cols)
-	values := GenerateValuesFromMeta(cols)
-	table := meta.Table
 	pk := meta.GetPrimaryKeyColumn()
 
-	// adding quote to table name if needed
+	if len(cols) == 0 {
+		return "", nil, pk, cols
+	}
+
+	colList := GenerateColumnListQuery(
+		d,
+		cfg.QuoteIdentifier,
+		cols,
+	)
+
+	placeholders := GeneratePlaceholderQuery(
+		d,
+		mode,
+		cols,
+	)
+
+	args := GenerateValuesFromMeta(cols)
+
+	table := meta.Table
 	if cfg.QuoteIdentifier {
 		table = d.QuoteIdentifier(table)
 	}
 
-	query := fmt.Sprintf(`INSERT INTO %s(%s) VALUES (%s)`, table, colList, values)
+	query := fmt.Sprintf(
+		`INSERT INTO %s (%s) VALUES (%s)`,
+		table,
+		colList,
+		placeholders,
+	)
 
 	if returningPk && d.SupportReturning() && pk != nil {
 		pkName := pk.Name
 		if cfg.QuoteIdentifier {
-			pkName = d.QuoteIdentifier(pk.Name)
+			pkName = d.QuoteIdentifier(pkName)
 		}
 		query += " RETURNING " + pkName
 	}
 
-	return query, values, pk
+	return query, args, pk, cols
 }
 
 // fungsi untuk skip kolom primary key dan bernilai nil atau kosong

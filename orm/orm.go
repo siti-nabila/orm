@@ -6,12 +6,15 @@ import (
 	"github.com/siti-nabila/orm/db"
 	"github.com/siti-nabila/orm/mapper"
 	"github.com/siti-nabila/orm/pkg/dictionary"
+	"github.com/siti-nabila/orm/pkg/logger"
 )
 
 type (
 	ORM struct {
 		executor db.Executor
 		config   config.Config
+		logger   logger.Logger
+		debug    bool
 	}
 )
 
@@ -19,7 +22,13 @@ func New(executor db.Executor, config config.Config) *ORM {
 	return &ORM{
 		executor: executor,
 		config:   config,
+		debug:    config.EnableDebug,
 	}
+}
+
+func (o *ORM) SetLogger(l logger.Logger, debug bool) {
+	o.logger = l
+	o.debug = debug
 }
 
 func (o *ORM) GeneratePlaceholder(cols []mapper.ColumnMeta) string {

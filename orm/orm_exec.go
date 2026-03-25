@@ -21,7 +21,14 @@ func (o *ORM) Create(ctx context.Context, v any) error {
 
 	mode := o.placeholderMode()
 	d := o.Dialect()
-	query, args, pkCol := builder.BuildInsertQuery(meta, d, o.config, mode, withReturningPrimary)
+	query, args, pkCol, filteredCols := builder.BuildInsertQuery(meta, d, o.config, mode, withReturningPrimary)
+
+	if query == "" {
+		return dictionary.ErrDBQueryEmpty
+	}
+	if o.logger != nil && o.debug {
+		o.logger.Log(query, d, filteredCols, args)
+	}
 
 	// if dialect supports returning primary key, then use query row and scan value to pkCol
 	if pkCol != nil && d.SupportReturning() {
@@ -35,7 +42,7 @@ func (o *ORM) Create(ctx context.Context, v any) error {
 		return err
 	}
 
-	if pkCol != nil && helper.IsIntKind(pkCol.Value) {
+	if pkCol != nil && helper.IsIntKind(pkCol.FieldSrc.Interface()) {
 		lastID, err := result.LastInsertId()
 		if err == nil {
 			helper.SetAutoID(pkCol.FieldSrc, lastID)
