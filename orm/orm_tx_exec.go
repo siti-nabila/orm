@@ -1,5 +1,7 @@
 package orm
 
+import "github.com/siti-nabila/orm/pkg/logger"
+
 func (s *SqlTransactionAdapter) Create(v any) error {
 	return s.orm.Create(s.ctx, v)
 }
@@ -10,4 +12,8 @@ func (s *SqlTransactionAdapter) Commit() error {
 
 func (s *SqlTransactionAdapter) Rollback() error {
 	return s.tx.Rollback()
+}
+
+func (s *SqlTransactionAdapter) SetLogger(l logger.Logger, debug bool) {
+	s.orm.SetLogger(l, debug)
 }
