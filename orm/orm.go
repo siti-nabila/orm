@@ -31,7 +31,7 @@ func (o *ORM) SetLogger(l logger.Logger, debug bool) {
 	o.debug = debug
 }
 
-func (o *ORM) GeneratePlaceholder(cols []mapper.ColumnMeta) string {
+func (o *ORM) GeneratePlaceholder(cols []mapper.ColumnMeta) (string, error) {
 	mode := o.placeholderMode()
 	return builder.GeneratePlaceholderQuery(o.executor.Dialect(), mode, cols)
 }

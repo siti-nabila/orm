@@ -37,3 +37,10 @@ func GenerateColumnListQuery(
 	names := RenderColumnNames(d, quote, cols)
 	return strings.Join(names, config.QuerySeperator)
 }
+
+func formatIdentifier(d dialect.Dialector, quote bool, name string) string {
+	if !quote {
+		return name
+	}
+	return d.QuoteIdentifier(name)
+}

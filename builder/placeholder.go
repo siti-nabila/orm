@@ -9,22 +9,38 @@ import (
 	"github.com/siti-nabila/orm/pkg/dictionary"
 )
 
-func GeneratePlaceholderQuery(d dialect.Dialector, mode config.PlaceholderMode, cols []mapper.ColumnMeta) string {
-	if len(cols) <= 0 {
-		return ""
+func GeneratePlaceholderQuery(
+	d dialect.Dialector,
+	mode config.PlaceholderMode,
+	cols []mapper.ColumnMeta,
+) (string, error) {
+	if len(cols) == 0 {
+		return "", nil
 	}
 
 	out := make([]string, len(cols))
-	for idx, v := range cols {
-		switch mode {
-		case config.PlaceholderByNumber:
-			out[idx] = d.PlaceholderByNumber(idx + 1)
-		case config.PlaceholderByName:
-			out[idx] = d.PlaceholderByName(v.Name)
-		default:
-			panic(dictionary.ErrDBPlaceholder)
+	for idx, col := range cols {
+		ph, err := GeneratePlaceholder(d, mode, idx+1, col)
+		if err != nil {
+			return "", err
 		}
+		out[idx] = ph
 	}
 
-	return strings.Join(out, config.QuerySeperator)
+	return strings.Join(out, config.QuerySeperator), nil
+}
+func GeneratePlaceholder(
+	d dialect.Dialector,
+	mode config.PlaceholderMode,
+	idx int,
+	col mapper.ColumnMeta,
+) (string, error) {
+	switch mode {
+	case config.PlaceholderByNumber:
+		return d.PlaceholderByNumber(idx), nil
+	case config.PlaceholderByName:
+		return d.PlaceholderByName(col.Name), nil
+	default:
+		return "", dictionary.ErrDBPlaceholder
+	}
 }

@@ -6,6 +6,7 @@ import (
 	"github.com/siti-nabila/orm/config"
 	"github.com/siti-nabila/orm/dialect"
 	"github.com/siti-nabila/orm/mapper"
+	"github.com/siti-nabila/orm/pkg/dictionary"
 	"github.com/siti-nabila/orm/pkg/helper"
 )
 
@@ -15,13 +16,13 @@ func BuildInsertQuery(
 	cfg config.Config,
 	mode config.PlaceholderMode,
 	returningPk bool,
-) (string, []any, *mapper.ColumnMeta, []mapper.ColumnMeta) {
+) (InsertQueryResult, error) {
 
-	cols := filterInsertColumnsQuery(meta.Columns)
+	cols := filterInsertColumns(meta.Columns)
 	pk := meta.GetPrimaryKeyColumn()
 
 	if len(cols) == 0 {
-		return "", nil, pk, cols
+		return InsertQueryResult{}, dictionary.ErrDBQueryEmpty
 	}
 
 	colList := GenerateColumnListQuery(
@@ -30,11 +31,14 @@ func BuildInsertQuery(
 		cols,
 	)
 
-	placeholders := GeneratePlaceholderQuery(
+	placeholders, err := GeneratePlaceholderQuery(
 		d,
 		mode,
 		cols,
 	)
+	if err != nil {
+		return InsertQueryResult{}, err
+	}
 
 	args := GenerateValuesFromMeta(cols)
 
@@ -58,11 +62,16 @@ func BuildInsertQuery(
 		query += " RETURNING " + pkName
 	}
 
-	return query, args, pk, cols
+	return InsertQueryResult{
+		Query:        query,
+		Args:         args,
+		PKColumn:     pk,
+		FilteredCols: cols,
+	}, nil
 }
 
-// fungsi untuk skip kolom primary key dan bernilai nil atau kosong
-func filterInsertColumnsQuery(
+// skip kolom primary key jika nilainya zero value
+func filterInsertColumns(
 	cols []mapper.ColumnMeta,
 ) []mapper.ColumnMeta {
 

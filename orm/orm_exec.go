@@ -35,39 +35,78 @@ func (o *ORM) Create(ctx context.Context, v any) error {
 
 	mode := o.placeholderMode()
 	d = o.Dialect()
-	query, args, pkCol, filteredCols := builder.BuildInsertQuery(meta, d, o.config, mode, withReturningPrimary)
+	insertQueryResult, err := builder.BuildInsertQuery(meta, d, o.config, mode, withReturningPrimary)
+	if err != nil {
+		return err
+	}
 
-	if query == "" {
+	if insertQueryResult.Query == "" {
 		return dictionary.ErrDBQueryEmpty
 	}
 
 	// if dialect supports returning primary key, then use query row and scan value to pkCol
-	if pkCol != nil && d.SupportReturning() {
-		row := o.executor.QueryRowContext(ctx, query, args...)
+	if insertQueryResult.PKColumn != nil && d.SupportReturning() {
+		row := o.executor.QueryRowContext(ctx, insertQueryResult.Query, insertQueryResult.Args...)
 
-		if err = row.Scan(pkCol.FieldSrc.Addr().Interface()); err != nil {
+		if err = row.Scan(insertQueryResult.PKColumn.FieldSrc.Addr().Interface()); err != nil {
 			return normalizeerr.Normalize(d.Name(), err)
 		}
-		pkCol.Value = pkCol.FieldSrc.Interface()
+		insertQueryResult.PKColumn.Value = insertQueryResult.PKColumn.FieldSrc.Interface()
 		return nil
 	}
 
 	// if dialect does not support returning primary key, then use exec and check last insert id
-	result, err := o.executor.ExecContext(ctx, query, args...)
+	result, err := o.executor.ExecContext(ctx, insertQueryResult.Query, insertQueryResult.Args...)
 	if err != nil {
 		return normalizeerr.Normalize(d.Name(), err)
 	}
 
-	if pkCol != nil && helper.IsIntKind(pkCol.FieldSrc.Interface()) {
+	if insertQueryResult.PKColumn != nil && helper.IsIntKind(insertQueryResult.PKColumn.FieldSrc.Interface()) {
 		lastID, err := result.LastInsertId()
 		if err == nil {
-			helper.SetAutoID(pkCol.FieldSrc, lastID)
+			helper.SetAutoID(insertQueryResult.PKColumn.FieldSrc, lastID)
 		}
 
 	}
 
 	return nil
 
+}
+
+func (o *ORM) Update(ctx context.Context, v any, fields ...map[string]any) (err error) {
+	start := time.Now()
+
+	d := o.Dialect()
+	mode := o.placeholderMode()
+
+	var res builder.UpdateQueryResult
+
+	defer func() {
+
+		o.log(
+			res.Query,
+			d,
+			res.PlaceholderCols,
+			res.Args,
+			start,
+			err,
+		)
+	}()
+	res, err = builder.BuildUpdateQuery(v, d, o.config, mode, fields...)
+	if err != nil {
+		return err
+	}
+
+	if res.Query == "" {
+		return dictionary.ErrDBQueryEmpty
+	}
+
+	_, err = o.executor.Exec(res.Query, res.Args...)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (o *ORM) Begin() (*ORM, error) {
@@ -105,10 +144,18 @@ func (o *ORM) Dialect() dialect.Dialector {
 	return o.executor.Dialect()
 }
 
-func (o *ORM) log(query string, d dialect.Dialector, cols []mapper.ColumnMeta, args []any, start time.Time, err error) {
+func (o *ORM) log(
+	query string,
+	d dialect.Dialector,
+	cols []mapper.ColumnMeta,
+	args []any,
+	start time.Time,
+	err error,
+) {
 	if o.logger == nil || !o.debug || query == "" {
 		return
 	}
+
 	duration := time.Since(start)
 	o.logger.Log(query, d, cols, args, duration, err)
 }

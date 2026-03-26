@@ -27,3 +27,19 @@ errors:
     code: 4006
     en: "Foreign key constraint error."
     id: "Kesalahan relasi foreign key."
+  err_db_too_many_arguments:
+    code: 4007
+    en: "Too many arguments provided."
+    id: "Terlalu banyak argumen yang diberikan."
+  err_pk_not_found:
+    code: 4008
+    en: "Primary key column not found."
+    id: "Kolom primary key tidak ditemukan."
+  err_pk_empty:
+    code: 4009
+    en: "Primary key value is empty."
+    id: "Nilai primary key kosong."
+  err_column_not_found:
+    code: 4010
+    en: "Column not found."
+    id: "Kolom tidak ditemukan."
