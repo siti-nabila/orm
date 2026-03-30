@@ -2,6 +2,7 @@ package orm
 
 import (
 	"context"
+	"reflect"
 	"time"
 
 	"github.com/siti-nabila/orm/builder"
@@ -15,17 +16,24 @@ import (
 
 func (o *ORM) Create(ctx context.Context, v any) error {
 	var (
-		err          error
-		start        = time.Now()
-		query        string
-		args         []any
-		filteredCols []mapper.ColumnMeta
-		d            dialect.Dialector
+		err               error
+		start             = time.Now()
+		insertQueryResult builder.InsertQueryResult
+		d                 dialect.Dialector
 	)
+	rv := reflect.ValueOf(v)
+	if !rv.IsValid() || rv.Kind() != reflect.Ptr || rv.IsNil() {
+		return dictionary.ErrMustBeStructPtr
+	}
+
+	if rv.Elem().Kind() != reflect.Struct {
+		return dictionary.ErrMustBeStructPtr
+	}
 
 	defer func() {
-		o.log(query, d, filteredCols, args, start, err)
+		o.log(insertQueryResult.Query, d, insertQueryResult.FilteredCols, insertQueryResult.Args, start, err)
 	}()
+
 	meta, err := mapper.Parse(v, o.config.UseSnakeCase)
 	if err != nil {
 		return err
@@ -35,16 +43,15 @@ func (o *ORM) Create(ctx context.Context, v any) error {
 
 	mode := o.placeholderMode()
 	d = o.Dialect()
-	insertQueryResult, err := builder.BuildInsertQuery(meta, d, o.config, mode, withReturningPrimary)
+
+	insertQueryResult, err = builder.BuildInsertQuery(meta, d, o.config, mode, withReturningPrimary)
 	if err != nil {
 		return err
 	}
-
 	if insertQueryResult.Query == "" {
 		return dictionary.ErrDBQueryEmpty
 	}
 
-	// if dialect supports returning primary key, then use query row and scan value to pkCol
 	if insertQueryResult.PKColumn != nil && d.SupportReturning() {
 		row := o.executor.QueryRowContext(ctx, insertQueryResult.Query, insertQueryResult.Args...)
 
@@ -55,7 +62,6 @@ func (o *ORM) Create(ctx context.Context, v any) error {
 		return nil
 	}
 
-	// if dialect does not support returning primary key, then use exec and check last insert id
 	result, err := o.executor.ExecContext(ctx, insertQueryResult.Query, insertQueryResult.Args...)
 	if err != nil {
 		return normalizeerr.Normalize(d.Name(), err)
@@ -66,47 +72,93 @@ func (o *ORM) Create(ctx context.Context, v any) error {
 		if err == nil {
 			helper.SetAutoID(insertQueryResult.PKColumn.FieldSrc, lastID)
 		}
-
 	}
 
 	return nil
-
 }
-
 func (o *ORM) Update(ctx context.Context, v any, fields ...map[string]any) (err error) {
-	start := time.Now()
+	var (
+		start             = time.Now()
+		updateQueryResult builder.UpdateQueryResult
+	)
+
+	rv := reflect.ValueOf(v)
+	if !rv.IsValid() || rv.Kind() != reflect.Ptr || rv.IsNil() {
+		return dictionary.ErrMustBeStructPtr
+	}
+
+	if rv.Elem().Kind() != reflect.Struct {
+		return dictionary.ErrMustBeStructPtr
+	}
 
 	d := o.Dialect()
 	mode := o.placeholderMode()
 
-	var res builder.UpdateQueryResult
-
 	defer func() {
-
 		o.log(
-			res.Query,
+			updateQueryResult.Query,
 			d,
-			res.PlaceholderCols,
-			res.Args,
+			updateQueryResult.PlaceholderCols,
+			updateQueryResult.Args,
 			start,
 			err,
 		)
 	}()
-	res, err = builder.BuildUpdateQuery(v, d, o.config, mode, fields...)
+
+	updateQueryResult, err = builder.BuildUpdateQuery(v, d, o.config, mode, fields...)
 	if err != nil {
 		return err
 	}
 
-	if res.Query == "" {
+	if updateQueryResult.Query == "" {
 		return dictionary.ErrDBQueryEmpty
 	}
 
-	_, err = o.executor.Exec(res.Query, res.Args...)
+	_, err = o.executor.ExecContext(ctx, updateQueryResult.Query, updateQueryResult.Args...)
 	if err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func (o *ORM) ScanQuery(
+	ctx context.Context,
+	query string,
+	args []any,
+	selectedCols []mapper.ColumnMeta,
+	dest any,
+) error {
+	start := time.Now()
+	var err error
+	defer func() {
+		o.log(query, o.Dialect(), selectedCols, args, start, err)
+	}()
+
+	if dest == nil {
+		err = dictionary.ErrDBScanNilDest
+		return err
+	}
+
+	rv := reflect.ValueOf(dest)
+	if !rv.IsValid() || rv.Kind() != reflect.Ptr || rv.IsNil() {
+		err = dictionary.ErrDBScanNotPointerDest
+		return err
+	}
+
+	elem := rv.Elem()
+
+	switch elem.Kind() {
+	case reflect.Struct:
+		err = o.scanOne(ctx, query, args, dest)
+		return err
+	case reflect.Slice:
+		err = o.scanMany(ctx, query, args, dest)
+		return err
+	default:
+		err = dictionary.ErrDBScanUnsupportedDest
+		return err
+	}
 }
 
 func (o *ORM) Begin() (*ORM, error) {

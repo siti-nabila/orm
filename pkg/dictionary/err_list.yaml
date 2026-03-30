@@ -43,3 +43,35 @@ errors:
     code: 4010
     en: "Column not found."
     id: "Kolom tidak ditemukan."
+  err_scan_dest_nil:
+    code: 4011
+    en: "Scan destination cannot be nil."
+    id: "Tujuan scan tidak boleh nil."
+  err_scan_dest_not_pointer:
+    code: 4012
+    en: "Scan destination must be a non-nil pointer."
+    id: "Tujuan scan harus non-nil pointer."
+  err_scan_unsupported_dest:
+    code: 4013
+    en: "Unsupported scan destination type."
+    id: "Tipe tujuan scan tidak didukung."
+  err_scan_not_implemented:
+    code: 4014
+    en: "ScanQuery not implemented."
+    id: "ScanQuery belum diimplementasikan."
+  err_meta_nil:
+    code: 4015
+    en: "Meta is nil."
+    id: "Meta nil."
+  err_scan_must_slice_struct:
+    code: 4016
+    en: "Scan destination slice element must be struct."
+    id: "Elemen slice tujuan scan harus struct."
+  err_invalid_value:
+    code: 4017
+    en: "Invalid value."
+    id: "Nilai tidak valid."
+  err_must_be_pointer_struct:
+    code: 4018
+    en: "Value must be a pointer to a struct."
+    id: "Nilai harus pointer ke struct."

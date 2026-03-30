@@ -4,8 +4,9 @@ import "reflect"
 
 type (
 	Meta struct {
-		Table   string
-		Columns []ColumnMeta
+		Table       string
+		Columns     []ColumnMeta
+		ColumnIndex map[string]int
 	}
 	ColumnMeta struct {
 		Name       string
@@ -16,9 +17,9 @@ type (
 )
 
 func (m Meta) GetPrimaryKeyColumn() *ColumnMeta {
-	for _, col := range m.Columns {
-		if col.PrimaryKey {
-			return &col
+	for i := range m.Columns {
+		if m.Columns[i].PrimaryKey {
+			return &m.Columns[i]
 		}
 	}
 	return nil

@@ -19,8 +19,8 @@ func BuildUpdateQuery(
 	mode config.PlaceholderMode,
 	fields ...map[string]any,
 ) (UpdateQueryResult, error) {
-	if v == nil {
-		return UpdateQueryResult{}, dictionary.ErrDBQueryEmpty
+	if err := helper.IsAllowedPointerStruct(v); err != nil {
+		return UpdateQueryResult{}, err
 	}
 
 	switch len(fields) {
@@ -192,21 +192,20 @@ func buildUpdateQueryFromMap(
 	}
 
 	// buat urutan fields map, karena kalau hanya looping map nya saja akan random
-	colIndex := buildColumnMetaIndex(meta.Columns)
 	keys := make([]string, 0, len(fields)-1)
 	for key := range fields {
-		colMeta, exists := colIndex[key]
+		idx, exists := meta.ColumnIndex[key]
 		if !exists {
 			return UpdateQueryResult{}, fmt.Errorf("%w: %s", dictionary.ErrColumnNotFound, key)
 		}
 
+		colMeta := meta.Columns[idx]
 		if colMeta.PrimaryKey {
 			continue
 		}
 
 		keys = append(keys, key)
 	}
-
 	sort.Strings(keys)
 
 	if len(keys) == 0 {
@@ -217,7 +216,8 @@ func buildUpdateQueryFromMap(
 	args := make([]any, 0, len(keys)+1)
 
 	for _, key := range keys {
-		colMeta := colIndex[key]
+		idx := meta.ColumnIndex[key]
+		colMeta := meta.Columns[idx]
 		colMeta.Value = fields[key]
 
 		setCols = append(setCols, colMeta)
@@ -286,14 +286,6 @@ func filterUpdateColumns(cols []mapper.ColumnMeta) []mapper.ColumnMeta {
 			continue
 		}
 		out = append(out, c)
-	}
-	return out
-}
-
-func buildColumnMetaIndex(cols []mapper.ColumnMeta) map[string]mapper.ColumnMeta {
-	out := make(map[string]mapper.ColumnMeta, len(cols))
-	for _, col := range cols {
-		out[col.Name] = col
 	}
 	return out
 }

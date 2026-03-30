@@ -1,6 +1,10 @@
 package helper
 
-import "reflect"
+import (
+	"reflect"
+
+	"github.com/siti-nabila/orm/pkg/dictionary"
+)
 
 func IsZero(v any) bool {
 
@@ -75,4 +79,32 @@ func SetAutoID(field reflect.Value, id int64) {
 	default:
 		// ignore, bukan numeric
 	}
+}
+
+func IndirectType(t reflect.Type) reflect.Type {
+	for t != nil && t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	return t
+}
+
+func IndirectValue(v reflect.Value) reflect.Value {
+	for v.IsValid() && v.Kind() == reflect.Ptr {
+		if v.IsNil() {
+			return reflect.Value{}
+		}
+		v = v.Elem()
+	}
+	return v
+}
+
+func IsAllowedPointerStruct(v any) error {
+	rv := reflect.ValueOf(v)
+	if !rv.IsValid() || rv.Kind() != reflect.Ptr || rv.IsNil() {
+		return dictionary.ErrMustBeStructPtr
+	}
+	if rv.Elem().Kind() != reflect.Struct {
+		return dictionary.ErrMustBeStructPtr
+	}
+	return nil
 }

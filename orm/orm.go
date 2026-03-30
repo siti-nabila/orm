@@ -53,6 +53,9 @@ func (o *ORM) placeholderMode() config.PlaceholderMode {
 		panic(dictionary.ErrDBPlaceholder)
 	}
 }
+func (o *ORM) PlaceholderMode() config.PlaceholderMode {
+	return o.placeholderMode()
+}
 
 func (o *ORM) placeholderAutoMode() config.PlaceholderMode {
 	switch o.executor.Dialect().Name() {
@@ -61,4 +64,8 @@ func (o *ORM) placeholderAutoMode() config.PlaceholderMode {
 	default:
 		return config.PlaceholderByNumber
 	}
+}
+
+func (o *ORM) Config() config.Config {
+	return o.config
 }
