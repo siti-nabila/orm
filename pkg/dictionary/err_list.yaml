@@ -1,77 +1,135 @@
 errors:
   err_db_conn:
     code: 4000
-    en: "Database connection error."
-    id: "Kesalahan koneksi database."
+    en: "orm: database connection error."
+    id: "orm: kesalahan koneksi database."
   err_db_placeholder:
     code: 4001
-    en: "Database placeholder error."
-    id: "Kesalahan placeholder database."
+    en: "orm: database placeholder error."
+    id: "orm: kesalahan placeholder database."
   err_db_query_empty:
     code: 4002
-    en: "Query is empty."
-    id: "Query kosong."
+    en: "orm: query is empty."
+    id: "orm: query kosong."
   err_duplicate_row:
     code: 4003
-    en: "Duplicate row."
-    id: "Baris duplikat."
+    en: "orm: duplicate row."
+    id: "orm: baris duplikat."
   err_row_not_found:
     code: 4004
-    en: "No rows found."
-    id: "Tidak ada baris yang ditemukan."
+    en: "orm: no rows found."
+    id: "orm: tidak ada baris yang ditemukan."
   err_db_unknown:
     code: 4005
-    en: "Unknown database error."
-    id: "Kesalahan database tidak diketahui."
+    en: "orm: unknown database error."
+    id: "orm: kesalahan database tidak diketahui."
   err_foreign_key:
     code: 4006
-    en: "Foreign key constraint error."
-    id: "Kesalahan relasi foreign key."
+    en: "orm: foreign key constraint error."
+    id: "orm: kesalahan relasi foreign key."
   err_db_too_many_arguments:
     code: 4007
-    en: "Too many arguments provided."
-    id: "Terlalu banyak argumen yang diberikan."
+    en: "orm: too many arguments provided."
+    id: "orm: terlalu banyak argumen yang diberikan."
   err_pk_not_found:
     code: 4008
-    en: "Primary key column not found."
-    id: "Kolom primary key tidak ditemukan."
+    en: "orm: primary key column not found."
+    id: "orm: kolom primary key tidak ditemukan."
   err_pk_empty:
     code: 4009
-    en: "Primary key value is empty."
-    id: "Nilai primary key kosong."
+    en: "orm: primary key value is empty."
+    id: "orm: nilai primary key kosong."
   err_column_not_found:
     code: 4010
-    en: "Column not found."
-    id: "Kolom tidak ditemukan."
+    en: "orm: column not found."
+    id: "orm: kolom tidak ditemukan."
   err_scan_dest_nil:
     code: 4011
-    en: "Scan destination cannot be nil."
-    id: "Tujuan scan tidak boleh nil."
+    en: "orm: scan destination cannot be nil."
+    id: "orm: tujuan scan tidak boleh nil."
   err_scan_dest_not_pointer:
     code: 4012
-    en: "Scan destination must be a non-nil pointer."
-    id: "Tujuan scan harus non-nil pointer."
+    en: "orm: scan destination must be a non-nil pointer."
+    id: "orm: tujuan scan harus non-nil pointer."
   err_scan_unsupported_dest:
     code: 4013
-    en: "Unsupported scan destination type."
-    id: "Tipe tujuan scan tidak didukung."
+    en: "orm: unsupported scan destination type."
+    id: "orm: tipe tujuan scan tidak didukung."
   err_scan_not_implemented:
     code: 4014
-    en: "ScanQuery not implemented."
-    id: "ScanQuery belum diimplementasikan."
+    en: "orm: scanquery not implemented."
+    id: "orm: scanquery belum diimplementasikan."
   err_meta_nil:
     code: 4015
-    en: "Meta is nil."
-    id: "Meta nil."
+    en: "orm: meta is nil."
+    id: "orm: meta nil."
   err_scan_must_slice_struct:
     code: 4016
-    en: "Scan destination slice element must be struct."
-    id: "Elemen slice tujuan scan harus struct."
+    en: "orm: scan destination slice element must be struct."
+    id: "orm: elemen slice tujuan scan harus struct."
   err_invalid_value:
     code: 4017
-    en: "Invalid value."
-    id: "Nilai tidak valid."
+    en: "orm: invalid value."
+    id: "orm: nilai tidak valid."
   err_must_be_pointer_struct:
     code: 4018
-    en: "Value must be a pointer to a struct."
-    id: "Nilai harus pointer ke struct."
+    en: "orm: value must be a pointer to a struct."
+    id: "orm: nilai harus pointer ke struct."
+  err_must_be_pointer_slice:
+    code: 4019
+    en: "orm: value must be a pointer to a slice."
+    id: "orm: nilai harus pointer ke slice."
+  err_unsupported_dialect:
+    code: 4032
+    en: "orm: unsupported database dialect."
+    id: "orm: dialek database tidak didukung."
+
+  # Bulk Insert Errors
+  err_bulk_insert_element_nil:
+    code: 4020
+    en: "orm: bulk insert values contains nil element."
+    id: "orm: elemen bulk insert bernilai nil."
+  err_bulk_insert_element_not_struct:
+    code: 4021
+    en: "orm: bulk insert values must be struct."
+    id: "orm: nilai bulk insert harus struct."
+  err_bulk_insert_element_type_mismatch:
+    code: 4022
+    en: "orm: bulk insert value type does not match destination struct type."
+    id: "orm: tipe nilai bulk insert tidak cocok dengan tipe struct tujuan."
+  err_bulk_insert_value_nil:
+    code: 4023
+    en: "orm: bulk insert values cannot be nil."
+    id: "orm: nilai bulk insert tidak boleh nil."
+  err_bulk_insert_value_not_pointer_slice:
+    code: 4024
+    en: "orm: bulk insert values must be a pointer to a slice."
+    id: "orm: nilai bulk insert harus pointer ke slice."
+  err_bulk_insert_value_slice_element_not_struct:
+    code: 4025
+    en: "orm: bulk insert slice element must be a struct."
+    id: "orm: elemen slice bulk insert harus struct."
+  err_bulk_insert_value_empty:
+    code: 4026
+    en: "orm: bulk insert values cannot be empty."
+    id: "orm: nilai bulk insert tidak boleh kosong."
+  err_bulk_insert_empty_metas:
+    code: 4027
+    en: "orm: bulk insert metas empty."
+    id: "orm: meta bulk insert kosong."
+  err_bulk_insert_table_mismatch:
+    code: 4028
+    en: "orm: bulk insert table name mismatch."
+    id: "orm: nama tabel bulk insert tidak cocok."
+  err_bulk_insert_primary_key_mismatch:
+    code: 4029
+    en: "orm: bulk insert primary key column mismatch."
+    id: "orm: kolom primary key bulk insert tidak cocok." 
+  err_bulk_insert_column_mismatch:
+    code: 4030
+    en: "orm: bulk insert column mismatch."
+    id: "orm: kolom bulk insert tidak cocok."
+  err_bulk_insert_column_count_mismatch:
+    code: 4031
+    en: "orm: bulk insert column count mismatch."
+    id: "orm: jumlah kolom bulk insert tidak cocok."

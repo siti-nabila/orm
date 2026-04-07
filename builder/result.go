@@ -16,4 +16,12 @@ type (
 		FilteredCols    []mapper.ColumnMeta
 		PlaceholderCols []mapper.ColumnMeta
 	}
+	InsertBulkQueryResult struct {
+		Query                string
+		Args                 []any
+		PrimaryKeyColName    string
+		PrimaryKeyColIndexes []int
+		FilteredCols         []mapper.ColumnMeta
+		RowCount             int
+	}
 )

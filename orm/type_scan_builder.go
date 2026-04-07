@@ -2,8 +2,9 @@ package orm
 
 import (
 	"database/sql"
-	"fmt"
 	"reflect"
+
+	"github.com/siti-nabila/orm/pkg/dictionary"
 )
 
 func buildUintScanTarget(
@@ -21,12 +22,14 @@ func buildUintScanTarget(
 			}
 
 			if holder.Int64 < 0 {
-				return fmt.Errorf("column %s has negative value %d for unsigned field", colName, holder.Int64)
+				return dictionary.ErrNegativeValueUintError(colName, holder.Int64)
+				// fmt.Errorf("column %s has negative value %d for unsigned field", colName, holder.Int64)
 			}
 
 			v := uint64(holder.Int64)
 			if field.OverflowUint(v) {
-				return fmt.Errorf("column %s value %d overflows unsigned field", colName, holder.Int64)
+				return dictionary.ErrColOverflowError(colName, holder.Int64)
+				// fmt.Errorf("column %s value %d overflows unsigned field", colName, holder.Int64)
 			}
 
 			field.SetUint(v)

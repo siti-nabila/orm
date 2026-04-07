@@ -6,6 +6,7 @@ import (
 	"github.com/siti-nabila/orm/config"
 	"github.com/siti-nabila/orm/dialect"
 	"github.com/siti-nabila/orm/mapper"
+	"github.com/siti-nabila/orm/pkg/helper"
 )
 
 type (
@@ -17,14 +18,21 @@ type (
 	}
 
 	QueryBuilder struct {
-		ctx        context.Context
-		orm        ormQuery
-		model      any
-		selectCols []string
-		conditions []Condition
-		limit      *int
-		offset     *int
-		orderBys   []string
+		ctx         context.Context
+		orm         ormQuery
+		model       any
+		selectCols  []string
+		conditions  []Condition
+		limit       *int
+		offset      *int
+		orderBys    []string
+		joins       []Join
+		selectExprs []string
+	}
+	Join struct {
+		Type  string
+		Table string
+		On    string
 	}
 )
 
@@ -44,7 +52,20 @@ func (b *QueryBuilder) Select(cols ...string) *QueryBuilder {
 	if len(cols) == 0 {
 		return b
 	}
-	b.selectCols = append(b.selectCols, cols...)
+
+	for _, col := range cols {
+		if col == "" {
+			continue
+		}
+
+		if helper.IsRawSelectExpr(col) {
+			b.selectExprs = append(b.selectExprs, col)
+			continue
+		}
+
+		b.selectCols = append(b.selectCols, col)
+	}
+
 	return b
 }
 
@@ -139,5 +160,102 @@ func (b *QueryBuilder) WithContext(ctx context.Context) *QueryBuilder {
 		return b
 	}
 	b.ctx = ctx
+	return b
+}
+
+func (b *QueryBuilder) WhereIn(column string, values any) *QueryBuilder {
+	if column == "" {
+		return b
+	}
+
+	b.conditions = append(b.conditions, ExpressionCondition{
+		Operator: ClauseAnd,
+		Query:    column + " IN (?)",
+		Args:     []any{values},
+	})
+
+	return b
+}
+
+func (b *QueryBuilder) OrWhereIn(column string, values any) *QueryBuilder {
+	if column == "" {
+		return b
+	}
+
+	b.conditions = append(b.conditions, ExpressionCondition{
+		Operator: ClauseOr,
+		Query:    column + " IN (?)",
+		Args:     []any{values},
+	})
+
+	return b
+}
+
+func (b *QueryBuilder) WhereNotIn(column string, values any) *QueryBuilder {
+	if column == "" {
+		return b
+	}
+
+	b.conditions = append(b.conditions, ExpressionCondition{
+		Operator: ClauseAnd,
+		Query:    column + " NOT IN (?)",
+		Args:     []any{values},
+	})
+
+	return b
+}
+
+func (b *QueryBuilder) OrWhereNotIn(column string, values any) *QueryBuilder {
+	if column == "" {
+		return b
+	}
+
+	b.conditions = append(b.conditions, ExpressionCondition{
+		Operator: ClauseOr,
+		Query:    column + " NOT IN (?)",
+		Args:     []any{values},
+	})
+
+	return b
+}
+func (b *QueryBuilder) Join(table string, on string) *QueryBuilder {
+	if table == "" || on == "" {
+		return b
+	}
+
+	b.joins = append(b.joins, Join{
+		Type:  "JOIN",
+		Table: table,
+		On:    on,
+	})
+
+	return b
+}
+
+func (b *QueryBuilder) LeftJoin(table string, on string) *QueryBuilder {
+	if table == "" || on == "" {
+		return b
+	}
+
+	b.joins = append(b.joins, Join{
+		Type:  "LEFT JOIN",
+		Table: table,
+		On:    on,
+	})
+
+	return b
+}
+
+func (b *QueryBuilder) RightJoin(table string, on string) *QueryBuilder {
+	if table == "" || on == "" {
+		return b
+	}
+
+	b.joins = append(b.joins, Join{
+		Type:  "RIGHT JOIN",
+		Table: table,
+		On:    on,
+	})
+
 	return b
 }

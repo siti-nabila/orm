@@ -28,6 +28,21 @@ var (
 	ErrDBScanMustBeSliceStruct error
 	ErrInvalidValue            error
 	ErrMustBeStructPtr         error
+	ErrMustBeSlicePtr          error
+	// error bulk insert
+	ErrBulkInsertElemNil                    error
+	ErrBulkInsertElemNotStruct              error
+	ErrBulkInsertElemTypeMismatch           error
+	ErrBulkInsertValueNil                   error
+	ErrBulkInsertValueNotPointerSlice       error
+	ErrBulkInsertValueSliceElementNotStruct error
+	ErrBulkInsertValueEmpty                 error
+	ErrBulkInsertTableMismatch              error
+	ErrBulkInsertPrimaryKeyMismatch         error
+	ErrBulkInsertColumnMismatch             error
+	ErrBulkInsertColumnCountMismatch        error
+	ErrBulkInsertEmptyMetas                 error
+	ErrUnsupportedDialect                   error
 
 	//go:embed err_list.yaml
 
@@ -57,4 +72,19 @@ func init() {
 	ErrDBScanMustBeSliceStruct = errPack.NewError("err_scan_must_be_slice_struct")
 	ErrInvalidValue = errPack.NewError("err_invalid_value")
 	ErrMustBeStructPtr = errPack.NewError("err_must_be_pointer_struct")
+	ErrMustBeSlicePtr = errPack.NewError("err_must_be_pointer_slice")
+	// error bulk insert
+	ErrBulkInsertElemNil = errPack.NewError("err_bulk_insert_elem_nil")
+	ErrBulkInsertElemNotStruct = errPack.NewError("err_bulk_insert_elem_not_struct")
+	ErrBulkInsertElemTypeMismatch = errPack.NewError("err_bulk_insert_elem_type_mismatch")
+	ErrBulkInsertValueNil = errPack.NewError("err_bulk_insert_value_nil")
+	ErrBulkInsertValueNotPointerSlice = errPack.NewError("err_bulk_insert_value_not_pointer_slice")
+	ErrBulkInsertValueSliceElementNotStruct = errPack.NewError("err_bulk_insert_value_slice_element_not_struct")
+	ErrBulkInsertValueEmpty = errPack.NewError("err_bulk_insert_value_empty")
+	ErrBulkInsertTableMismatch = errPack.NewError("err_bulk_insert_table_mismatch")
+	ErrBulkInsertPrimaryKeyMismatch = errPack.NewError("err_bulk_insert_primary_key_mismatch")
+	ErrBulkInsertColumnMismatch = errPack.NewError("err_bulk_insert_column_mismatch")
+	ErrBulkInsertColumnCountMismatch = errPack.NewError("err_bulk_insert_column_count_mismatch")
+	ErrBulkInsertEmptyMetas = errPack.NewError("err_bulk_insert_empty_metas")
+	ErrUnsupportedDialect = errPack.NewError("err_unsupported_dialect")
 }

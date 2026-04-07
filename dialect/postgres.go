@@ -33,3 +33,7 @@ func (d Postgres) SupportReturning() bool {
 func (d Postgres) Name() string {
 	return "postgres"
 }
+
+func (d Postgres) Type() DialectType {
+	return DialectPostgres
+}

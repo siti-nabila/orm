@@ -2,6 +2,7 @@ package helper
 
 import (
 	"reflect"
+	"strings"
 
 	"github.com/siti-nabila/orm/pkg/dictionary"
 )
@@ -108,3 +109,69 @@ func IsAllowedPointerStruct(v any) error {
 	}
 	return nil
 }
+
+func IsExpandableSliceArg(v any) bool {
+	if v == nil {
+		return false
+	}
+
+	rv := reflect.ValueOf(v)
+	if !rv.IsValid() {
+		return false
+	}
+
+	if rv.Kind() != reflect.Slice && rv.Kind() != reflect.Array {
+		return false
+	}
+
+	// []byte jangan dianggap IN list
+	if rv.Type().Elem().Kind() == reflect.Uint8 {
+		return false
+	}
+
+	return true
+}
+
+func IsRawSelectExpr(s string) bool {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return false
+	}
+
+	upper := strings.ToUpper(s)
+
+	if strings.Contains(s, " ") ||
+		strings.Contains(s, ".") ||
+		strings.Contains(s, "(") ||
+		strings.Contains(s, ")") ||
+		strings.Contains(s, "*") ||
+		strings.Contains(upper, " AS ") {
+		return true
+	}
+
+	return false
+}
+
+func IsNilOrZeroValue(v any) bool {
+	if v == nil {
+		return true
+	}
+
+	rv := reflect.ValueOf(v)
+	if !rv.IsValid() {
+		return true
+	}
+
+	for rv.Kind() == reflect.Interface || rv.Kind() == reflect.Ptr {
+		if rv.IsNil() {
+			return true
+		}
+		rv = rv.Elem()
+	}
+
+	return rv.IsZero()
+}
+
+Beberapa catatan penting untuk file ini:
+
+validateBulkValues

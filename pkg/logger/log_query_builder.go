@@ -27,19 +27,19 @@ func Interpolate(
 		return query
 	}
 
-	switch d.Name() {
+	switch d.Type() {
 
-	case "postgres":
+	case dialect.DialectPostgres:
 		return interpolateNumbered(query, "$", args...)
 
-	case "oracle":
+	case dialect.DialectOracle:
 		// detect apakah :1 atau :name
 		if strings.Contains(query, ":1") {
 			return interpolateNumbered(query, ":", args...)
 		}
 		return interpolateNamed(query, cols, args...)
 
-	case "mysql", "sqlite":
+	case dialect.DialectMySQL:
 		return interpolateQuestion(query, args...)
 
 	default:

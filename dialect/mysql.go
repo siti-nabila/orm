@@ -29,3 +29,7 @@ func (d Mysql) SupportReturning() bool {
 func (d Mysql) Name() string {
 	return "mysql"
 }
+
+func (d Mysql) Type() DialectType {
+	return DialectMySQL
+}

@@ -21,3 +21,7 @@ func (s *SqlTransactionAdapter) Rollback() error {
 func (s *SqlTransactionAdapter) SetLogger(l logger.Logger, debug bool) {
 	s.orm.SetLogger(l, debug)
 }
+
+func (s *SqlTransactionAdapter) CreateBulk(v any) error {
+	return s.orm.CreateBulk(s.ctx, v)
+}

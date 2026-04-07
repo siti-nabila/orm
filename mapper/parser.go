@@ -20,7 +20,7 @@ func Parse(v any, useSnake bool) (*Meta, error) {
 	}
 
 	if val.Kind() != reflect.Struct {
-		return nil, dictionary.ErrInvalidValue
+		return nil, dictionary.ErrMustBeStructPtr
 	}
 
 	typ := val.Type()

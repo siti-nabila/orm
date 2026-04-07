@@ -28,3 +28,7 @@ func (d Oracle) SupportReturning() bool {
 func (d Oracle) Name() string {
 	return "oracle"
 }
+
+func (d Oracle) Type() DialectType {
+	return DialectOracle
+}

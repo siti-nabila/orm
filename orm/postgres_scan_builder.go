@@ -1,10 +1,10 @@
 package orm
 
 import (
-	"fmt"
 	"reflect"
 
 	"github.com/lib/pq"
+	"github.com/siti-nabila/orm/pkg/dictionary"
 )
 
 func buildPostgresScanTarget(
@@ -90,7 +90,7 @@ func buildPostgresIntSliceScanTarget(
 			result := reflect.MakeSlice(field.Type(), 0, len(*holder))
 			for _, v := range *holder {
 				if reflect.Zero(field.Type().Elem()).OverflowInt(v) {
-					return fmt.Errorf("column %s value %d overflows int slice element", colName, v)
+					return dictionary.ErrColOverflowError(colName, v)
 				}
 				result = reflect.Append(result, reflect.ValueOf(int(v)).Convert(field.Type().Elem()))
 			}

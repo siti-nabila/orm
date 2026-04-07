@@ -2,12 +2,14 @@ package query
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 
 	"github.com/siti-nabila/orm/config"
 	"github.com/siti-nabila/orm/dialect"
 	"github.com/siti-nabila/orm/mapper"
 	"github.com/siti-nabila/orm/pkg/dictionary"
+	"github.com/siti-nabila/orm/pkg/helper"
 )
 
 type (
@@ -60,23 +62,27 @@ func buildExprCondition(
 	c ExpressionCondition,
 	startIdx int,
 ) (string, []any, int, error) {
-	rebound, nextIdx, placeholderCount, err := rebindQueryPlaceholders(d, mode, c.Query, startIdx)
+	expandedQuery, expandedArgs, err := expandSliceArgsInQuery(c.Query, c.Args)
 	if err != nil {
 		return "", nil, startIdx, err
 	}
 
-	if placeholderCount != len(c.Args) {
+	rebound, nextIdx, placeholderCount, err := rebindQueryPlaceholders(d, mode, expandedQuery, startIdx)
+	if err != nil {
+		return "", nil, startIdx, err
+	}
+
+	if placeholderCount != len(expandedArgs) {
 		return "", nil, startIdx, fmt.Errorf(
 			"placeholder count does not match args count: query=%q placeholders=%d args=%d",
-			c.Query,
+			expandedQuery,
 			placeholderCount,
-			len(c.Args),
+			len(expandedArgs),
 		)
 	}
 
-	return rebound, c.Args, nextIdx, nil
+	return rebound, expandedArgs, nextIdx, nil
 }
-
 func buildGroupCondition(
 	d dialect.Dialector,
 	mode config.PlaceholderMode,
@@ -194,6 +200,60 @@ func buildSelectColumnList(d dialect.Dialector, quote bool, cols []mapper.Column
 	return strings.Join(out, ", ")
 }
 
+func expandSliceArgsInQuery(query string, args []any) (string, []any, error) {
+	if query == "" {
+		return "", nil, nil
+	}
+
+	var (
+		out      strings.Builder
+		flatArgs = make([]any, 0)
+		argIndex = 0
+	)
+
+	for _, ch := range query {
+		if ch != '?' {
+			out.WriteRune(ch)
+			continue
+		}
+
+		if argIndex >= len(args) {
+			return "", nil, fmt.Errorf("placeholder count exceeds args count")
+		}
+
+		arg := args[argIndex]
+		argIndex++
+
+		if helper.IsExpandableSliceArg(arg) {
+			rv := reflect.ValueOf(arg)
+
+			// empty slice handling
+			if rv.Len() == 0 {
+				out.WriteString("NULL")
+				continue
+			}
+
+			for i := 0; i < rv.Len(); i++ {
+				if i > 0 {
+					out.WriteString(", ")
+				}
+				out.WriteString("?")
+				flatArgs = append(flatArgs, rv.Index(i).Interface())
+			}
+			continue
+		}
+
+		out.WriteString("?")
+		flatArgs = append(flatArgs, arg)
+	}
+
+	if argIndex != len(args) {
+		return "", nil, fmt.Errorf("args count exceeds placeholder count")
+	}
+
+	return out.String(), flatArgs, nil
+}
+
 func (b *QueryBuilder) build() (QueryBuilderResult, error) {
 	if b.orm == nil {
 		return QueryBuilderResult{}, dictionary.ErrDBQueryEmpty
@@ -217,18 +277,43 @@ func (b *QueryBuilder) build() (QueryBuilderResult, error) {
 		table = d.QuoteIdentifier(table)
 	}
 
-	selectedCols, err := resolveSelectedColumns(meta.Columns, b.selectCols)
-	if err != nil {
-		return QueryBuilderResult{}, err
+	var (
+		selectParts  []string
+		selectedCols []mapper.ColumnMeta
+	)
+
+	// normal model columns
+	if len(b.selectCols) > 0 {
+		selectedCols, err = resolveSelectedColumns(meta.Columns, b.selectCols)
+		if err != nil {
+			return QueryBuilderResult{}, err
+		}
+
+		if len(selectedCols) > 0 {
+			selectParts = append(selectParts, buildSelectColumnParts(d, cfg.QuoteIdentifier, selectedCols)...)
+		}
+	} else if len(b.selectExprs) == 0 {
+		// default: all model columns
+		selectedCols = append(selectedCols, meta.Columns...)
+		selectParts = append(selectParts, buildSelectColumnParts(d, cfg.QuoteIdentifier, meta.Columns)...)
 	}
 
-	if len(selectedCols) == 0 {
+	// raw expressions
+	if len(b.selectExprs) > 0 {
+		selectParts = append(selectParts, b.selectExprs...)
+	}
+
+	if len(selectParts) == 0 {
 		return QueryBuilderResult{}, dictionary.ErrDBQueryEmpty
 	}
 
-	selectQuery := buildSelectColumnList(d, cfg.QuoteIdentifier, selectedCols)
+	selectQuery := strings.Join(selectParts, ", ")
 
 	query := fmt.Sprintf("SELECT %s FROM %s", selectQuery, table)
+
+	for _, j := range b.joins {
+		query += " " + j.Type + " " + j.Table + " ON " + j.On
+	}
 
 	whereQuery, args, _, err := buildConditions(d, mode, b.conditions, 1)
 	if err != nil {
@@ -268,4 +353,16 @@ func (b *QueryBuilder) Scan(dest any) error {
 	}
 
 	return b.orm.ScanQuery(b.ctx, res.Query, res.Args, res.SelectedCols, dest)
+}
+
+func buildSelectColumnParts(d dialect.Dialector, quote bool, cols []mapper.ColumnMeta) []string {
+	out := make([]string, 0, len(cols))
+	for _, col := range cols {
+		name := col.Name
+		if quote {
+			name = d.QuoteIdentifier(name)
+		}
+		out = append(out, name)
+	}
+	return out
 }

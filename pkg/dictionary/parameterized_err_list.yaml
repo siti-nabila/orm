@@ -1,6 +1,21 @@
 errors:
   err_placeholder_not_supported:
     code: 4100
-    en: "%s does not support this placeholder type."
-    id: "%s tidak mendukung tipe placeholder ini."
-
+    en: "orm: %s does not support this placeholder type."
+    id: "orm: %s tidak mendukung tipe placeholder ini."
+  err_col_not_found_on_dest:
+    code: 4101
+    en: "orm: column %s not found on destination struct."
+    id: "orm: kolom %s tidak ditemukan pada struct tujuan."
+  err_unaddressable_dest:
+    code: 4102
+    en: "orm: destination struct is not addressable."
+    id: "orm: struct tujuan tidak dapat dialamatkan."
+  err_col_overflow:
+    code: 4103
+    en: "orm: column %s | value %v overflows the destination type."
+    id: "orm: kolom %s | nilai %v melebihi kapasitas tipe tujuan."
+  err_negative_value_uint:
+    code: 4104
+    en: "orm: column %s has negative value %d for unsigned field."
+    id: "orm: kolom %s memiliki nilai negatif %d untuk field unsigned."
