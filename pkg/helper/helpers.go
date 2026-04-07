@@ -171,7 +171,3 @@ func IsNilOrZeroValue(v any) bool {
 
 	return rv.IsZero()
 }
-
-Beberapa catatan penting untuk file ini:
-
-validateBulkValues
