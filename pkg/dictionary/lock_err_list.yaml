@@ -1,0 +1,17 @@
+errors:
+  err_lock_conflict:
+    code: 41000
+    en: "orm: conflict."
+    id: "orm: konflik."
+  err_lock_empty_key:
+    code: 41001
+    en: "orm: empty key."
+    id: "orm: kunci kosong."
+  err_lock_unsupported_dialect:
+    code: 41002
+    en: "orm: unsupported database dialect for lock."
+    id: "orm: dialek database tidak didukung untuk lock."
+  err_lock_not_acquired:
+    code: 41003
+    en: "orm: failed to acquire lock."
+    id: "orm: gagal memperoleh lock."

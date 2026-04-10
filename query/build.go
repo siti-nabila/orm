@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/siti-nabila/orm/builder"
 	"github.com/siti-nabila/orm/config"
 	"github.com/siti-nabila/orm/dialect"
 	"github.com/siti-nabila/orm/mapper"
@@ -17,6 +18,7 @@ type (
 		Query        string
 		Args         []any
 		SelectedCols []mapper.ColumnMeta
+		Mode         builder.DryRunMode
 	}
 )
 
@@ -282,7 +284,6 @@ func (b *QueryBuilder) build() (QueryBuilderResult, error) {
 		selectedCols []mapper.ColumnMeta
 	)
 
-	// normal model columns
 	if len(b.selectCols) > 0 {
 		selectedCols, err = resolveSelectedColumns(meta.Columns, b.selectCols)
 		if err != nil {
@@ -293,12 +294,10 @@ func (b *QueryBuilder) build() (QueryBuilderResult, error) {
 			selectParts = append(selectParts, buildSelectColumnParts(d, cfg.QuoteIdentifier, selectedCols)...)
 		}
 	} else if len(b.selectExprs) == 0 {
-		// default: all model columns
 		selectedCols = append(selectedCols, meta.Columns...)
 		selectParts = append(selectParts, buildSelectColumnParts(d, cfg.QuoteIdentifier, meta.Columns)...)
 	}
 
-	// raw expressions
 	if len(b.selectExprs) > 0 {
 		selectParts = append(selectParts, b.selectExprs...)
 	}
@@ -308,7 +307,6 @@ func (b *QueryBuilder) build() (QueryBuilderResult, error) {
 	}
 
 	selectQuery := strings.Join(selectParts, ", ")
-
 	query := fmt.Sprintf("SELECT %s FROM %s", selectQuery, table)
 
 	for _, j := range b.joins {
@@ -336,12 +334,19 @@ func (b *QueryBuilder) build() (QueryBuilderResult, error) {
 		query += " OFFSET " + fmt.Sprint(*b.offset)
 	}
 
+	dryRunMode := builder.DryRunModeQuery
+	if b.singleRow {
+		dryRunMode = builder.DryRunModeQueryRow
+	}
+
 	return QueryBuilderResult{
 		Query:        query,
 		Args:         args,
 		SelectedCols: selectedCols,
+		Mode:         dryRunMode,
 	}, nil
 }
+
 func (b *QueryBuilder) Scan(dest any) error {
 	if dest == nil {
 		return dictionary.ErrDBQueryEmpty

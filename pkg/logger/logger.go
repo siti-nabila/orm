@@ -10,40 +10,38 @@ import (
 
 type (
 	Logger interface {
-		Log(query string, d dialect.Dialector, cols []mapper.ColumnMeta, args []any, duration time.Duration, err error)
+		Log(query string, d dialect.Dialector, cols []mapper.ColumnMeta, args []any, mode string, duration time.Duration, err error)
+		LogDryRun(query string, d dialect.Dialector, cols []mapper.ColumnMeta, args []any, mode string)
 	}
 	DefaultLogger struct{}
 )
 
-func (d DefaultLogger) Log(query string, dialector dialect.Dialector, cols []mapper.ColumnMeta, args []any, duration time.Duration, err error) {
-	interpolatedQuery := Interpolate(query, dialector, cols, args...)
-	ms := float64(duration.Microseconds()) / 1000.0
-	if err != nil {
-		fmt.Printf("[SQL] %s | Duration: %.2fms | Error: %v\n", interpolatedQuery, ms, err)
-	} else {
-		fmt.Printf("[SQL] %s | Duration: %.2fms\n", interpolatedQuery, ms)
-	}
-}
-
-func (d DefaultLogger) LogUpdateQuery(
+func (d DefaultLogger) Log(
 	query string,
 	dialector dialect.Dialector,
-	setCols []mapper.ColumnMeta,
-	pkCol mapper.ColumnMeta,
+	cols []mapper.ColumnMeta,
 	args []any,
+	mode string,
 	duration time.Duration,
 	err error,
 ) {
-	cols := make([]mapper.ColumnMeta, 0, len(setCols)+1)
-	cols = append(cols, setCols...)
-	cols = append(cols, pkCol)
-
-	interpolatedQuery := Interpolate(query, dialector, cols, args...)
-	ms := float64(duration) / float64(time.Millisecond)
+	rendered := Interpolate(query, dialector, cols, args...)
 
 	if err != nil {
-		fmt.Printf("[SQL] %s | Duration: %.2fms | Error: %v\n", interpolatedQuery, ms, err)
-	} else {
-		fmt.Printf("[SQL] %s | Duration: %.2fms\n", interpolatedQuery, ms)
+		fmt.Printf("[ORM][%s][%s] %v | ERROR: %v | %s\n", dialector.Name(), mode, duration, err, rendered)
+		return
 	}
+
+	fmt.Printf("[ORM][%s][%s] %v | %s\n", dialector.Name(), mode, duration, rendered)
+}
+
+func (d DefaultLogger) LogDryRun(
+	query string,
+	dialector dialect.Dialector,
+	cols []mapper.ColumnMeta,
+	args []any,
+	mode string,
+) {
+	rendered := Interpolate(query, dialector, cols, args...)
+	fmt.Printf("[ORM][DRY_RUN][%s][%s] %s\n", dialector.Name(), mode, rendered)
 }

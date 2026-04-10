@@ -16,6 +16,7 @@ func (o *ORM) CreateBulk(ctx context.Context, values any) (err error) {
 		start             = time.Now()
 		insertQueryResult builder.InsertBulkQueryResult
 		d                 = o.Dialect()
+		mode              builder.DryRunMode
 	)
 
 	defer func() {
@@ -24,6 +25,7 @@ func (o *ORM) CreateBulk(ctx context.Context, values any) (err error) {
 			d,
 			insertQueryResult.FilteredCols,
 			insertQueryResult.Args,
+			mode,
 			start,
 			err,
 		)
@@ -64,10 +66,13 @@ func (o *ORM) CreateBulk(ctx context.Context, values any) (err error) {
 
 	switch d.Type() {
 	case dialect.DialectPostgres:
+		mode = builder.DryRunModeQuery
 		return o.createBulkPostgres(ctx, metas, insertQueryResult)
 	case dialect.DialectMySQL:
+		mode = builder.DryRunModeExec
 		return o.createBulkMySQL(ctx, insertQueryResult)
 	case dialect.DialectOracle:
+		mode = builder.DryRunModeExec
 		return o.createBulkOracle(ctx, insertQueryResult)
 	default:
 		return dictionary.ErrUnsupportedDialect

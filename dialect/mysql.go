@@ -1,6 +1,10 @@
 package dialect
 
-import "github.com/siti-nabila/orm/pkg/dictionary"
+import (
+	"context"
+
+	"github.com/siti-nabila/orm/pkg/dictionary"
+)
 
 type (
 	Mysql struct{}
@@ -32,4 +36,12 @@ func (d Mysql) Name() string {
 
 func (d Mysql) Type() DialectType {
 	return DialectMySQL
+}
+
+func (d Mysql) TryLockQuery(ctx context.Context, key string) (query string, args []any, err error) {
+	return `SELECT GET_LOCK(?, 0)`, []any{key}, nil
+}
+
+func (d Mysql) ReleaseLockQuery(ctx context.Context, key string) (query string, args []any, needed bool, err error) {
+	return `SELECT RELEASE_LOCK(?)`, []any{key}, true, nil
 }

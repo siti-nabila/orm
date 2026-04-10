@@ -11,9 +11,10 @@ import (
 
 type (
 	SqlTransactionAdapter struct {
-		ctx context.Context
-		tx  *sql.Tx
-		orm *ORM
+		ctx          context.Context
+		tx           *sql.Tx
+		orm          *ORM
+		acquiredLock map[string]struct{}
 	}
 )
 
@@ -27,8 +28,9 @@ func NewSqlTransactionAdapter(
 	o := New(exec, cfg)
 
 	return &SqlTransactionAdapter{
-		ctx: ctx,
-		tx:  tx,
-		orm: o,
+		ctx:          ctx,
+		tx:           tx,
+		orm:          o,
+		acquiredLock: make(map[string]struct{}),
 	}
 }

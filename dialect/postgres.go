@@ -1,8 +1,10 @@
 package dialect
 
 import (
+	"context"
 	"fmt"
 
+	"github.com/siti-nabila/orm/lock"
 	"github.com/siti-nabila/orm/pkg/dictionary"
 )
 
@@ -36,4 +38,13 @@ func (d Postgres) Name() string {
 
 func (d Postgres) Type() DialectType {
 	return DialectPostgres
+}
+
+func (d Postgres) TryLockQuery(ctx context.Context, key string) (query string, args []any, err error) {
+	hash := lock.NewHash64(key)
+	return `SELECT pg_try_advisory_xact_lock($1)`, []any{hash}, nil
+}
+
+func (d Postgres) ReleaseLockQuery(ctx context.Context, key string) (query string, args []any, needed bool, err error) {
+	return "", nil, false, nil
 }

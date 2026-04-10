@@ -3,6 +3,7 @@ package query
 import (
 	"context"
 
+	"github.com/siti-nabila/orm/builder"
 	"github.com/siti-nabila/orm/config"
 	"github.com/siti-nabila/orm/dialect"
 	"github.com/siti-nabila/orm/mapper"
@@ -28,6 +29,7 @@ type (
 		orderBys    []string
 		joins       []Join
 		selectExprs []string
+		singleRow   bool
 	}
 	Join struct {
 		Type  string
@@ -106,6 +108,7 @@ func (b *QueryBuilder) WhereGroup(fn func(q *QueryBuilder)) *QueryBuilder {
 func (b *QueryBuilder) First(dest any) error {
 	limit := 1
 	b.limit = &limit
+	b.singleRow = true
 	return b.Scan(dest)
 }
 
@@ -258,4 +261,24 @@ func (b *QueryBuilder) RightJoin(table string, on string) *QueryBuilder {
 	})
 
 	return b
+}
+
+func (b *QueryBuilder) DryRun() (builder.DryRunResult, error) {
+	res, err := b.build()
+	if err != nil {
+		return builder.DryRunResult{}, err
+	}
+
+	return builder.DryRunResult{
+		Query: res.Query,
+		Args:  res.Args,
+		Mode:  res.Mode,
+	}, nil
+}
+
+func (b *QueryBuilder) DryRunFirst() (builder.DryRunResult, error) {
+	limit := 1
+	b.limit = &limit
+	b.singleRow = true
+	return b.DryRun()
 }

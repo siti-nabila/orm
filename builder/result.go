@@ -2,7 +2,14 @@ package builder
 
 import "github.com/siti-nabila/orm/mapper"
 
+const (
+	DryRunModeExec     DryRunMode = "exec"
+	DryRunModeQuery    DryRunMode = "query"
+	DryRunModeQueryRow DryRunMode = "query_row"
+)
+
 type (
+	DryRunMode        string
 	InsertQueryResult struct {
 		Query        string
 		Args         []any
@@ -24,4 +31,13 @@ type (
 		FilteredCols         []mapper.ColumnMeta
 		RowCount             int
 	}
+	DryRunResult struct {
+		Query string
+		Args  []any
+		Mode  DryRunMode
+	}
 )
+
+func (d DryRunMode) String() string {
+	return string(d)
+}

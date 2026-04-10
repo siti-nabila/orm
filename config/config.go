@@ -7,6 +7,8 @@ type (
 		UseSnakeCase    bool
 		PlaceholderMode PlaceholderMode
 		EnableDebug     bool
+		LogDryRunQuery  bool
+		LogLockQuery    bool
 	}
 )
 
