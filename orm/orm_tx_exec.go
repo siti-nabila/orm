@@ -115,3 +115,11 @@ func (s *SqlTransactionAdapter) TryLock(ctx context.Context, key string) (bool, 
 
 	return acq, nil
 }
+
+func (s *SqlTransactionAdapter) CreateWith(v any) *CreateCommand {
+	return &CreateCommand{
+		orm: s.orm,
+		ctx: s.ctx,
+		v:   v,
+	}
+}

@@ -36,6 +36,20 @@ type (
 		Args  []any
 		Mode  DryRunMode
 	}
+	InsertAdvancedQueryResult struct {
+		Query              string
+		Args               []any
+		FilteredCols       []mapper.ColumnMeta
+		ReturningCols      []mapper.ColumnMeta
+		Mode               DryRunMode
+		OracleReturningOut bool
+	}
+	ReturningSelectQueryResult struct {
+		Query         string
+		Args          []any
+		ReturningCols []mapper.ColumnMeta
+		TargetCols    []mapper.ColumnMeta
+	}
 )
 
 func (d DryRunMode) String() string {

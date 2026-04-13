@@ -19,3 +19,20 @@ errors:
     code: 4104
     en: "orm: column %s has negative value %d for unsigned field."
     id: "orm: kolom %s memiliki nilai negatif %d untuk field unsigned."
+  err_adv_ins_conflict_unsupported_action:
+    code: 4105
+    en: "orm: create with, 'on conflict' %s is not supported for this database dialect."
+    id: "orm: create with, 'on conflict' %s tidak didukung untuk dialect database ini."
+  err_scan_type_mismatch:
+    code: 4106
+    en: "orm: scan column '%s': invalid value %v"
+    id: "orm: scan kolom '%s': nilai tidak valid %v"
+  err_scan_type_int_mismatch:
+    code: 4107
+    en: "orm: scan column '%s': invalid int value %v to int field"
+    id: "orm: scan kolom '%s': nilai int tidak valid %v untuk field int"
+  err_scan_into_column_count_mismatch:
+    code: 4108
+    en: "orm: scanInto destination count mismatch: expected %d (returning columns), got %d."
+    id: "orm: scanInto tujuan jumlah kolom tidak cocok: diharapkan %d (kolom returning), didapat %d."
+

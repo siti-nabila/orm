@@ -133,3 +133,73 @@ errors:
     code: 4031
     en: "orm: bulk insert column count mismatch."
     id: "orm: jumlah kolom bulk insert tidak cocok."
+
+  # error advanced insert
+  err_adv_ins_inc_missing_ref_column:
+    code: 4033
+    en: "orm: create with, invalid 'on conflict' assignment: inc requires a reference column."
+    id: "orm: create with, penugasan 'on conflict' tidak valid: inc membutuhkan kolom referensi."
+  err_adv_ins_invalid_mode:
+    code: 4034
+    en: "orm: create with, invalid 'on conflict' assignment mode."
+    id: "orm: create with, mode penugasan 'on conflict' tidak valid."
+  err_adv_ins_returning_not_found:
+    code: 4036
+    en: "orm: create with, returning column not found in model."
+    id: "orm: create with, kolom returning tidak ditemukan di model."
+  err_adv_ins_target_col_empty:
+    code: 4037
+    en: "orm: create with, 'on conflict' requires at least one target column."
+    id: "orm: create with, 'on conflict' membutuhkan setidaknya satu kolom target."
+  err_adv_ins_conflict_no_action:
+    code: 4038
+    en: "orm: create with, invalid 'on conflict' configuration: must specify either do_nothing or assignments."
+    id: "orm: create with, konfigurasi 'on conflict' tidak valid: harus menentukan do_nothing atau assignments."
+  err_adv_ins_conflict_donothing_with_update:
+    code: 4039
+    en: "orm: create with, invalid 'on conflict' configuration: do_nothing cannot be combined with assignments or do_updates."
+    id: "orm: create with, konfigurasi 'on conflict' tidak valid: do_nothing tidak dapat digabungkan dengan assignments atau do_updates."
+  err_adv_ins_conflict_target_col_not_found:
+    code: 4040
+    en: "orm: create with, 'on conflict' target column not found in model."
+    id: "orm: create with, kolom target 'on conflict' tidak ditemukan di model."
+  err_adv_ins_conflict_update_col_not_found:
+    code: 4041
+    en: "orm: create with, 'on conflict' update column not found in model."
+    id: "orm: create with, kolom update 'on conflict' tidak ditemukan di model."
+  err_adv_ins_conflict_assignment_col_not_found:
+    code: 4042
+    en: "orm: create with, 'on conflict' assignment column not found in model."
+    id: "orm: create with, kolom assignment 'on conflict' tidak ditemukan di model."
+  err_adv_ins_conflict_ref_col_not_found:
+    code: 4043
+    en: "orm: create with, 'on conflict' assignment reference column not found in model."
+    id: "orm: create with, kolom referensi assignment 'on conflict' tidak ditemukan di model."
+  err_adv_ins_conflict_duplicate_assignment:
+    code: 4044
+    en: "orm: create with, duplicate 'on conflict' assignment for column."
+    id: "orm: create with, assignment 'on conflict' untuk kolom yang sama terduplikasi."
+  err_adv_ins_mysql_scan_requires_target:
+    code: 4045
+    en: "orm: create with, mysql scan requires 'on conflict' target columns."
+    id: "orm: create with, scan mysql membutuhkan kolom target 'on conflict'."
+  err_adv_ins_scan_without_returning:
+    code: 4046
+    en: "orm: create with, scan requires returning columns."
+    id: "orm: create with, scan membutuhkan kolom returning."
+  err_adv_ins_exec_with_returning:
+    code: 4047
+    en: "orm: create with, exec cannot be used with returning columns."
+    id: "orm: create with, exec tidak dapat digunakan dengan kolom returning."
+  err_adv_ins_oracle_returning_bind_failed:
+    code: 4048
+    en: "orm: create with, oracle returning bind failed."
+    id: "orm: create with, bind returning oracle gagal."
+  err_db_scan_primitive_must_single_column:
+    code: 4049
+    en: "orm: scan primitive destination requires exactly one selected column."
+    id: "orm: scan ke destination primitif membutuhkan tepat satu kolom hasil select."
+  err_db_scan_into_empty_dest:
+    code: 4050
+    en: "orm: scan destination cannot be empty."
+    id: "orm: tujuan scan tidak boleh kosong."

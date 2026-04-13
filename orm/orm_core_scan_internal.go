@@ -18,6 +18,53 @@ func (o *ORM) scanOne(
 	args []any,
 	dest any,
 ) error {
+	rv := reflect.ValueOf(dest)
+	if !rv.IsValid() || rv.Kind() != reflect.Ptr || rv.IsNil() {
+		return dictionary.ErrDBScanNotPointerDest
+	}
+
+	elem := rv.Elem()
+
+	switch elem.Kind() {
+	case reflect.Struct:
+		return o.scanOneStruct(ctx, query, args, dest)
+	default:
+		return o.scanOnePrimitive(ctx, query, args, dest)
+	}
+}
+
+func (o *ORM) scanMany(
+	ctx context.Context,
+	query string,
+	args []any,
+	dest any,
+) error {
+	rv := reflect.ValueOf(dest)
+	if !rv.IsValid() || rv.Kind() != reflect.Ptr || rv.IsNil() {
+		return dictionary.ErrDBScanNotPointerDest
+	}
+
+	elem := rv.Elem()
+	if elem.Kind() != reflect.Slice {
+		return dictionary.ErrDBScanUnsupportedDest
+	}
+
+	elemType := elem.Type().Elem()
+
+	switch elemType.Kind() {
+	case reflect.Struct:
+		return o.scanManyStruct(ctx, query, args, dest)
+	default:
+		return o.scanManyPrimitive(ctx, query, args, dest)
+	}
+}
+
+func (o *ORM) scanOneStruct(
+	ctx context.Context,
+	query string,
+	args []any,
+	dest any,
+) error {
 	rows, err := o.executor.QueryContext(ctx, query, args...)
 	if err != nil {
 		return normalizeerr.Normalize(o.Dialect().Name(), err)
@@ -48,7 +95,7 @@ func (o *ORM) scanOne(
 	return rows.Err()
 }
 
-func (o *ORM) scanMany(
+func (o *ORM) scanManyStruct(
 	ctx context.Context,
 	query string,
 	args []any,
@@ -84,6 +131,86 @@ func (o *ORM) scanMany(
 		}
 
 		if err := scanCurrentRowIntoStruct(rows, cols, meta, o.Dialect()); err != nil {
+			return normalizeerr.Normalize(o.Dialect().Name(), err)
+		}
+
+		resultSlice = reflect.Append(resultSlice, elemPtr.Elem())
+	}
+
+	if err := rows.Err(); err != nil {
+		return normalizeerr.Normalize(o.Dialect().Name(), err)
+	}
+
+	destSlice.Set(resultSlice)
+	return nil
+}
+
+func (o *ORM) scanOnePrimitive(
+	ctx context.Context,
+	query string,
+	args []any,
+	dest any,
+) error {
+	rows, err := o.executor.QueryContext(ctx, query, args...)
+	if err != nil {
+		return normalizeerr.Normalize(o.Dialect().Name(), err)
+	}
+	defer rows.Close()
+
+	cols, err := rows.Columns()
+	if err != nil {
+		return err
+	}
+
+	if len(cols) != 1 {
+		return dictionary.ErrDBScanPrimitiveMustSingleColumn
+	}
+
+	if !rows.Next() {
+		if err := rows.Err(); err != nil {
+			return normalizeerr.Normalize(o.Dialect().Name(), err)
+		}
+		return normalizeerr.Normalize(o.Dialect().Name(), sql.ErrNoRows)
+	}
+
+	if err := rows.Scan(dest); err != nil {
+		return normalizeerr.Normalize(o.Dialect().Name(), err)
+	}
+
+	return rows.Err()
+}
+
+func (o *ORM) scanManyPrimitive(
+	ctx context.Context,
+	query string,
+	args []any,
+	dest any,
+) error {
+	rows, err := o.executor.QueryContext(ctx, query, args...)
+	if err != nil {
+		return normalizeerr.Normalize(o.Dialect().Name(), err)
+	}
+	defer rows.Close()
+
+	cols, err := rows.Columns()
+	if err != nil {
+		return err
+	}
+
+	if len(cols) != 1 {
+		return dictionary.ErrDBScanPrimitiveMustSingleColumn
+	}
+
+	rv := reflect.ValueOf(dest)
+	destSlice := rv.Elem()
+	elemType := destSlice.Type().Elem()
+
+	resultSlice := reflect.MakeSlice(destSlice.Type(), 0, 0)
+
+	for rows.Next() {
+		elemPtr := reflect.New(elemType)
+
+		if err := rows.Scan(elemPtr.Interface()); err != nil {
 			return normalizeerr.Normalize(o.Dialect().Name(), err)
 		}
 
@@ -223,26 +350,26 @@ func buildScanTargetForField(
 	}
 }
 
-func buildMySQLScanTarget(
-	colName string,
-	field reflect.Value,
-) (any, *scanAssignment, bool, error) {
-	_ = colName
-	_ = field
-	// fokus untuk postgres dulu, nanti handling MySQL scan yang tipe data khusus bisa dsini
-	return nil, nil, false, nil
-}
+// func buildMySQLScanTarget(
+// 	colName string,
+// 	field reflect.Value,
+// ) (any, *scanAssignment, bool, error) {
+// 	_ = colName
+// 	_ = field
+// 	// fokus untuk postgres dulu, nanti handling MySQL scan yang tipe data khusus bisa dsini
+// 	return nil, nil, false, nil
+// }
 
-func buildOracleScanTarget(
-	colName string,
-	field reflect.Value,
-) (any, *scanAssignment, bool, error) {
-	_ = colName
-	_ = field
-	// fokus untuk postgres dulu, nanti handling MySQL scan yang tipe data khusus bisa dsini
+// func buildOracleScanTarget(
+// 	colName string,
+// 	field reflect.Value,
+// ) (any, *scanAssignment, bool, error) {
+// 	_ = colName
+// 	_ = field
+// 	// fokus untuk postgres dulu, nanti handling MySQL scan yang tipe data khusus bisa dsini
 
-	return nil, nil, false, nil
-}
+// 	return nil, nil, false, nil
+// }
 
 func applyScanAssignments(assignments []scanAssignment) error {
 	for _, a := range assignments {

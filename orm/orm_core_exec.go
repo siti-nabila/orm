@@ -135,3 +135,7 @@ func (o *ORM) logDryRun(
 		mode.String(),
 	)
 }
+
+func (o *ORM) shouldLogLockQuery() bool {
+	return o != nil && o.config.LogLockQuery
+}
