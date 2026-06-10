@@ -1,4 +1,3 @@
-
 # 🚀 Go Native ORM (Lightweight & Dialect-Aware)
 
 A lightweight, performant, and extensible ORM built in Go, designed to support multiple SQL dialects (PostgreSQL, MySQL, Oracle) with minimal reflection overhead via metadata caching.
@@ -7,108 +6,46 @@ A lightweight, performant, and extensible ORM built in Go, designed to support m
 
 ## ✨ Features
 
-- Multi-dialect support (PostgreSQL, MySQL, Oracle)
-- Metadata caching (minimize reflection cost)
-- Query Builder for flexible SELECT queries
-- Simple Create & Update API
-- Context propagation (per-request safe)
-- Built-in SQL logging (debug mode)
-- Adapter-based architecture (Query & Transaction separation)
+- 🔌 Multi-dialect support (PostgreSQL, MySQL, Oracle)
+- ⚡ Metadata caching (minimize reflection cost)
+- 🧱 Query Builder (SELECT with chaining)
+- 📝 Create & Update API (struct & map based)
+- 🔁 Context propagation (per-request safe)
+- 🪵 Advanced logging system:
+  - execution log
+  - dry run log
+  - lock log (optional)
+- 🔒 Transaction-level locking (non-blocking, dialect-aware)
+- 🧪 Dry Run mode (perfect for sqlmock & debugging)
+- 🧩 Adapter-based architecture
 
 ---
 
 ## 📦 Installation
+
 ```bash
 go get github.com/siti-nabila/orm
-```
----
-
-## 🏗️ Architecture Overview
-
-### ORM Core
-Handles:
-- query execution
-- logging
-- dialect behavior
-- metadata parsing (cached)
-
-### SqlQueryAdapter (READ)
-Used for SELECT queries:
-- inject context
-- entry point via UseModel()
-
-### SqlTransactionAdapter (WRITE)
-Used for:
-- Create
-- Update
-- Transaction control
-
-### QueryBuilder
-Chainable query builder:
-
-```
-UseModel(...).Where(...).Limit(...).Scan(...)
-```
-
----
-
-## ⚙️ Model Definition
-
-```
-type User struct {
-    ID        uint64     `sql:"column:id;primaryKey"`
-    Email     string     `sql:"column:email"`
-    Password  string     `sql:"column:password"`
-    CreatedAt time.Time  `sql:"column:created_at"`
-    UpdatedAt time.Time  `sql:"column:updated_at"`
-    DeletedAt *time.Time `sql:"column:deleted_at"`
-}
-
-func (User) TableName() string {
-    return "users"
-}
 ```
 
 ---
 
 ## 🔍 READ (SELECT)
 
-### Get by Email
-
-```
-func (r *authReader) GetByEmail(email string) (result domain.AuthResponse, err error) {
-    db := r.Adapter()
-
-    err = db.
-        UseModel(store.User{}).
-        Where("email = ?", email).
-        Limit(1).
-        Scan(&result)
-
-    return result, err
-}
-```
-
-### Multiple Conditions
-
-```
+```go
 db.UseModel(User{}).
-   Where("status = ?", "ACTIVE").
-   Where("age > ?", 18).
-   OrderBy("created_at DESC").
-   Limit(10).
-   Scan(&users)
+   Where("email = ?", email).
+   Limit(1).
+   Scan(&result)
 ```
 
 ---
 
-## 📝 CREATE (INSERT)
+## 📝 CREATE
 
-```
+```go
 tx := orm.NewSqlTransactionAdapter(ctx, sqlTx, dialect, cfg)
 
-err := tx.Create(&user)
-if err != nil {
+if err := tx.Create(&user); err != nil {
     tx.Rollback()
     return err
 }
@@ -116,24 +53,17 @@ if err != nil {
 return tx.Commit()
 ```
 
-Behavior:
-- Auto generate INSERT query
-- Skip zero primary key
-- Support RETURNING / LastInsertId
-
 ---
 
 ## ✏️ UPDATE
 
-### Struct-based
-
-```
+```go
 err := tx.Update(&user)
 ```
 
-### Map-based
+or
 
-```
+```go
 err := tx.Update(&user, map[string]any{
     "email": "new@email.com",
 })
@@ -141,87 +71,67 @@ err := tx.Update(&user, map[string]any{
 
 ---
 
-## 🔄 TRANSACTION FLOW
+## 🔒 TRANSACTION LOCKING (Non-Blocking)
 
-```
-tx := orm.NewSqlTransactionAdapter(ctx, sqlTx, dialect, cfg)
-tx.Begin()
-
-if err := tx.Create(&user); err != nil {
+```go
+locked, err := tx.TryLock(ctx, "user:123")
+if err != nil {
     tx.Rollback()
     return err
 }
 
-if err := tx.Update(&user); err != nil {
+if !locked {
     tx.Rollback()
-    return err
+    return errors.New("resource is locked")
 }
+
+err = tx.Update(&user)
 
 return tx.Commit()
 ```
 
 ---
 
-## 🔌 Repository Integration
+## 🧪 DRY RUN (Testing & Debugging)
 
-### Adapter
+### Create
 
+```go
+res, err := orm.RunDryCreate(ctx, &user)
 ```
-func (r *authReader) Adapter() *orm.SqlQueryAdapter {
-    return orm.NewSqlQueryAdapter(r.ctx, r.Db, dialect, cfg)
+
+### Update
+
+```go
+res, err := orm.RunDryUpdate(ctx, &user)
+```
+
+### Select
+
+```go
+res, err := db.UseModel(User{}).
+    Where("email = ?", email).
+    DryRun()
+```
+
+---
+
+## 🪵 LOGGING CONFIG
+
+```go
+cfg := config.Config{
+    EnableDebug:    true,
+    LogDryRunQuery: true,
+    LogLockQuery:   true,
 }
 ```
-
-### Usage
-
-```
-db := r.Adapter()
-
-err := db.UseModel(User{}).
-    Where("id = ?", 1).
-    Scan(&user)
-```
-
----
-
-## 🧠 Context Handling
-
-- Context injected from service layer
-- Stored inside QueryBuilder
-- No need to pass context manually
-
----
-
-## 🪵 Logging
-
-```
-o.SetLogger(logger.DefaultLogger{}, true)
-```
-
----
-
-## ⚡ Performance
-
-- Metadata caching (no repeated reflection)
-- Fast scan via column index mapping
-
----
-
-## 🧩 Dialect Support
-
-| Dialect    | Placeholder | RETURNING |
-|------------|------------|----------|
-| PostgreSQL | $1         | Yes      |
-| MySQL      | ?          | No       |
-| Oracle     | :1         | Yes      |
 
 ---
 
 ## 📌 Summary
 
-This ORM focuses on:
-
-- simplicity
-- performance
-- flexibility
-- production readiness
+- Lightweight ORM
+- Multi-dialect support
+- Transaction locking
+- DryRun support for testing
+- Clean architecture

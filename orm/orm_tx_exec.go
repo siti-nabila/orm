@@ -47,6 +47,14 @@ func (s *SqlTransactionAdapter) CreateBulk(v any) error {
 	return s.orm.CreateBulk(s.ctx, v)
 }
 
+func (s *SqlTransactionAdapter) UpdateBulk(v any) error {
+	return s.orm.UpdateBulk(s.ctx, v)
+}
+
+func (s *SqlTransactionAdapter) DryRunUpdateBulk(v any) (builder.DryRunResult, error) {
+	return s.orm.DryRunUpdateBulk(v)
+}
+
 func (s *SqlTransactionAdapter) TryLock(ctx context.Context, key string) (bool, error) {
 
 	var (

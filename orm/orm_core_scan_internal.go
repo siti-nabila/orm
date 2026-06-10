@@ -120,7 +120,20 @@ func (o *ORM) scanManyStruct(
 		return dictionary.ErrDBScanMustBeSliceStruct
 	}
 
-	resultSlice := reflect.MakeSlice(destSlice.Type(), 0, 0)
+	resultSlice := reflect.MakeSlice(destSlice.Type(), 0, 8)
+
+	templatePtr := reflect.New(elemType)
+	templateMeta, err := mapper.Parse(templatePtr.Interface(), o.config.UseSnakeCase)
+	if err != nil {
+		return err
+	}
+
+	scanIndexes, err := prepareScanIndexes(templateMeta, cols)
+	if err != nil {
+		return err
+	}
+
+	d := o.Dialect()
 
 	for rows.Next() {
 		elemPtr := reflect.New(elemType)
@@ -130,8 +143,17 @@ func (o *ORM) scanManyStruct(
 			return err
 		}
 
-		if err := scanCurrentRowIntoStruct(rows, cols, meta, o.Dialect()); err != nil {
-			return normalizeerr.Normalize(o.Dialect().Name(), err)
+		targets, assignments, err := prepareScanTargets(meta, scanIndexes, d)
+		if err != nil {
+			return normalizeerr.Normalize(d.Name(), err)
+		}
+
+		if err := rows.Scan(targets...); err != nil {
+			return normalizeerr.Normalize(d.Name(), err)
+		}
+
+		if err := applyScanAssignments(assignments); err != nil {
+			return err
 		}
 
 		resultSlice = reflect.Append(resultSlice, elemPtr.Elem())
@@ -205,7 +227,7 @@ func (o *ORM) scanManyPrimitive(
 	destSlice := rv.Elem()
 	elemType := destSlice.Type().Elem()
 
-	resultSlice := reflect.MakeSlice(destSlice.Type(), 0, 0)
+	resultSlice := reflect.MakeSlice(destSlice.Type(), 0, 8)
 
 	for rows.Next() {
 		elemPtr := reflect.New(elemType)
@@ -349,27 +371,6 @@ func buildScanTargetForField(
 		return field.Addr().Interface(), nil, nil
 	}
 }
-
-// func buildMySQLScanTarget(
-// 	colName string,
-// 	field reflect.Value,
-// ) (any, *scanAssignment, bool, error) {
-// 	_ = colName
-// 	_ = field
-// 	// fokus untuk postgres dulu, nanti handling MySQL scan yang tipe data khusus bisa dsini
-// 	return nil, nil, false, nil
-// }
-
-// func buildOracleScanTarget(
-// 	colName string,
-// 	field reflect.Value,
-// ) (any, *scanAssignment, bool, error) {
-// 	_ = colName
-// 	_ = field
-// 	// fokus untuk postgres dulu, nanti handling MySQL scan yang tipe data khusus bisa dsini
-
-// 	return nil, nil, false, nil
-// }
 
 func applyScanAssignments(assignments []scanAssignment) error {
 	for _, a := range assignments {

@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/godev90/validator/faults"
+	// "github.com/godev90/validator/faults"
+	errorpackage "github.com/siti-nabila/error-package"
 	"github.com/siti-nabila/orm/mapper"
 	"github.com/siti-nabila/orm/pkg/dictionary"
 	"github.com/siti-nabila/orm/pkg/helper"
@@ -60,7 +61,7 @@ func validateBulkValues(values any) (reflect.Value, reflect.Type, bool, error) {
 
 func parseBulkMetas(values reflect.Value, isPtrElem bool, useSnake bool) ([]*mapper.Meta, error) {
 	metas := make([]*mapper.Meta, 0, values.Len())
-	errs := faults.Errors{}
+	errs := errorpackage.Errors{}
 
 	for i := 0; i < values.Len(); i++ {
 		item := values.Index(i)
@@ -69,13 +70,15 @@ func parseBulkMetas(values reflect.Value, isPtrElem bool, useSnake bool) ([]*map
 
 		if isPtrElem {
 			if item.IsNil() {
-				errs[bulkRowKey(i)] = dictionary.ErrBulkInsertElemNil
+				// errs[bulkRowKey(i)] = dictionary.ErrBulkInsertElemNil
+				errs.Add(bulkRowKey(i), dictionary.ErrBulkInsertElemNil)
 				continue
 			}
 			target = item.Interface()
 		} else {
 			if !item.CanAddr() {
-				errs[bulkRowKey(i)] = dictionary.ErrBulkInsertElemTypeMismatch
+				// errs[bulkRowKey(i)] = dictionary.ErrBulkInsertElemTypeMismatch
+				errs.Add(bulkRowKey(i), dictionary.ErrBulkInsertElemTypeMismatch)
 				continue
 			}
 			target = item.Addr().Interface()
@@ -83,7 +86,8 @@ func parseBulkMetas(values reflect.Value, isPtrElem bool, useSnake bool) ([]*map
 
 		meta, err := mapper.Parse(target, useSnake)
 		if err != nil {
-			errs[bulkRowKey(i)] = err
+			// errs[bulkRowKey(i)] = err
+			errs.Add(bulkRowKey(i), err)
 			continue
 		}
 

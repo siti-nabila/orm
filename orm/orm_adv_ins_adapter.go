@@ -21,6 +21,7 @@ type (
 		v            any
 		opts         CreateOptions
 		scanIntoDest []any
+		scanDest     any
 	}
 	CreateOptions struct {
 		Returning  []string
@@ -62,6 +63,10 @@ func Inc(column string, delta any) ConflictExpr {
 	return incConflictExpr{column: column, delta: delta}
 }
 
-func (valueConflictExpr) isConflictExpr() {}
+func (valueConflictExpr) isConflictExpr() {
+	// hanya untuk penjagaan composition
+}
 
-func (incConflictExpr) isConflictExpr() {}
+func (incConflictExpr) isConflictExpr() {
+	// hanya untuk penjagaan composition
+}

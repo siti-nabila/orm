@@ -1,6 +1,8 @@
 package orm
 
 import (
+	"reflect"
+
 	"github.com/siti-nabila/orm/dialect"
 	"github.com/siti-nabila/orm/mapper"
 	"github.com/siti-nabila/orm/pkg/dictionary"
@@ -44,6 +46,35 @@ func buildReturningScanTargets(cols []mapper.ColumnMeta) ([]any, error) {
 	for _, col := range cols {
 		if !col.FieldSrc.IsValid() || !col.FieldSrc.CanAddr() {
 			return nil, dictionary.ErrDBScanUnsupportedDest
+		}
+		targets = append(targets, col.FieldSrc.Addr().Interface())
+	}
+
+	return targets, nil
+}
+
+func resolveStructScanTargets(dest any, returningCols []string, useSnakeCase bool) ([]any, error) {
+	rv := reflect.ValueOf(dest)
+	if !rv.IsValid() || rv.Kind() != reflect.Ptr || rv.IsNil() {
+		return nil, dictionary.ErrDBScanNotPointerDest
+	}
+	if rv.Elem().Kind() != reflect.Struct {
+		return nil, dictionary.ErrMustBeStructPtr
+	}
+
+	meta, err := mapper.Parse(dest, useSnakeCase)
+	if err != nil {
+		return nil, err
+	}
+
+	targets := make([]any, 0, len(returningCols))
+	for _, colName := range returningCols {
+		col, ok := findMetaColumn(meta, colName)
+		if !ok {
+			return nil, dictionary.ErrAdvInsReturningNotFound
+		}
+		if !col.FieldSrc.IsValid() || !col.FieldSrc.CanAddr() {
+			return nil, dictionary.ErrUnaddressableDestError(col.Name)
 		}
 		targets = append(targets, col.FieldSrc.Addr().Interface())
 	}

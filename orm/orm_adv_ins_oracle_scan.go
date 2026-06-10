@@ -15,6 +15,7 @@ func executeOracleAdvInsertScan(
 	ctx context.Context,
 	o *ORM,
 	buildRes builder.InsertAdvancedQueryResult,
+	dest []any,
 ) error {
 	if len(buildRes.ReturningCols) == 0 {
 		return dictionary.ErrAdvInsScanWithoutReturning
@@ -22,6 +23,17 @@ func executeOracleAdvInsertScan(
 
 	if !buildRes.OracleReturningOut {
 		return dictionary.ErrAdvInsOracleReturningBindFailed
+	}
+
+	if len(dest) > 0 {
+		args := make([]any, 0, len(buildRes.Args)+len(dest))
+		args = append(args, buildRes.Args...)
+		for _, t := range dest {
+			args = append(args, sql.Out{Dest: t})
+		}
+
+		_, err := o.executor.ExecContext(ctx, buildRes.Query, args...)
+		return normalizeerr.Normalize(o.Dialect().Name(), err)
 	}
 
 	outArgs, assignments, err := prepareOracleReturningBindTargets(

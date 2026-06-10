@@ -1,10 +1,7 @@
 package orm
 
 import (
-	"database/sql"
 	"reflect"
-
-	"github.com/siti-nabila/orm/pkg/dictionary"
 )
 
 func buildMySQLScanTarget(
@@ -12,52 +9,28 @@ func buildMySQLScanTarget(
 	field reflect.Value,
 ) (any, *scanAssignment, bool, error) {
 
-	// []byte
-	if field.Kind() == reflect.Slice && field.Type().Elem().Kind() == reflect.Uint8 {
-		holder := new([]byte)
+	switch field.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return buildSharedIntScanTarget(colName, field)
 
-		assignment := &scanAssignment{
-			Field: field,
-			AssignFunc: func() error {
-				if holder == nil || *holder == nil {
-					field.Set(reflect.Zero(field.Type()))
-					return nil
-				}
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return buildSharedUintScanTarget(colName, field)
 
-				switch v := any(*holder).(type) {
-				case []byte:
-					cloned := append([]byte(nil), v...)
-					field.Set(reflect.ValueOf(cloned))
-					return nil
+	case reflect.Float32, reflect.Float64:
+		return buildSharedFloatScanTarget(colName, field)
 
-				default:
-					return dictionary.ErrScanTypeMismatch(colName, v)
-				}
-			},
+	case reflect.Bool:
+		return buildSharedBoolScanTarget(colName, field)
+
+	case reflect.Slice:
+		if field.Type().Elem().Kind() == reflect.Uint8 {
+			return buildSharedBytesScanTarget(colName, field)
 		}
-
-		return holder, assignment, true, nil
 	}
 
 	// *string
 	if field.Kind() == reflect.Ptr && field.Type().Elem().Kind() == reflect.String {
-		holder := new(sql.NullString)
-
-		assignment := &scanAssignment{
-			Field: field,
-			AssignFunc: func() error {
-				if !holder.Valid {
-					field.Set(reflect.Zero(field.Type()))
-					return nil
-				}
-
-				v := holder.String
-				field.Set(reflect.ValueOf(&v))
-				return nil
-			},
-		}
-
-		return holder, assignment, true, nil
+		return buildSharedNullableStringScanTarget(colName, field)
 	}
 
 	return nil, nil, false, nil

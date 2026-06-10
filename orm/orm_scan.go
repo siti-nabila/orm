@@ -36,29 +36,17 @@ func (o *ORM) ScanQuery(
 
 	elem := rv.Elem()
 
-	switch elem.Kind() {
-	case reflect.Struct:
-		mode = builder.DryRunModeQueryRow
-	case reflect.Slice:
-		mode = builder.DryRunModeQuery
-	default:
-		err = dictionary.ErrDBScanUnsupportedDest
-		return err
-	}
-
 	defer func() {
 		o.log(query, o.Dialect(), selectedCols, args, mode, start, err)
 	}()
 
-	switch elem.Kind() {
-	case reflect.Struct:
-		err = o.scanOne(ctx, query, args, dest)
-		return err
-	case reflect.Slice:
+	if elem.Kind() == reflect.Slice {
+		mode = builder.DryRunModeQuery
 		err = o.scanMany(ctx, query, args, dest)
 		return err
-	default:
-		err = dictionary.ErrDBScanUnsupportedDest
-		return err
 	}
+
+	mode = builder.DryRunModeQueryRow
+	err = o.scanOne(ctx, query, args, dest)
+	return err
 }

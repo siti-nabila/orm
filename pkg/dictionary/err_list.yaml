@@ -134,6 +134,20 @@ errors:
     en: "orm: bulk insert column count mismatch."
     id: "orm: jumlah kolom bulk insert tidak cocok."
 
+  # Bulk Update Errors
+  err_bulk_update_empty_metas:
+    code: 4051
+    en: "orm: bulk update metas empty."
+    id: "orm: meta bulk update kosong."
+  err_bulk_update_primary_key_mismatch:
+    code: 4052
+    en: "orm: bulk update primary key column mismatch."
+    id: "orm: kolom primary key bulk update tidak cocok."
+  err_bulk_update_column_mismatch:
+    code: 4053
+    en: "orm: bulk update column mismatch."
+    id: "orm: kolom bulk update tidak cocok."
+
   # error advanced insert
   err_adv_ins_inc_missing_ref_column:
     code: 4033

@@ -12,7 +12,7 @@ func Parse(v any, useSnake bool) (*Meta, error) {
 		return nil, dictionary.ErrInvalidValue
 	}
 
-	if val.Kind() == reflect.Ptr {
+	if val.Kind() == reflect.Pointer {
 		if val.IsNil() {
 			return nil, dictionary.ErrInvalidValue
 		}

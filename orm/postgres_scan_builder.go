@@ -20,6 +20,10 @@ func buildPostgresScanTarget(
 			return buildPostgresInt64SliceScanTarget(colName, field)
 		case reflect.Int:
 			return buildPostgresIntSliceScanTarget(colName, field)
+		case reflect.Uint64:
+			return buildPostgresUint64SliceScanTarget(colName, field)
+		case reflect.Uint32:
+			return buildPostgresUint32SliceScanTarget(colName, field)
 		}
 	}
 
@@ -96,6 +100,69 @@ func buildPostgresIntSliceScanTarget(
 			}
 
 			field.Set(result)
+			return nil
+		},
+	}
+
+	return pq.Array(holder), assignment, true, nil
+}
+
+func buildPostgresUint64SliceScanTarget(
+	colName string,
+	field reflect.Value,
+) (any, *scanAssignment, bool, error) {
+	holder := new([]int64)
+
+	assignment := &scanAssignment{
+		Field: field,
+		AssignFunc: func() error {
+			if holder == nil || *holder == nil {
+				field.Set(reflect.Zero(field.Type()))
+				return nil
+			}
+
+			result := make([]uint64, 0, len(*holder))
+			for _, v := range *holder {
+				if v < 0 {
+					return dictionary.ErrNegativeValueUintError(colName, v)
+				}
+				result = append(result, uint64(v))
+			}
+
+			field.Set(reflect.ValueOf(result))
+			return nil
+		},
+	}
+
+	return pq.Array(holder), assignment, true, nil
+}
+
+func buildPostgresUint32SliceScanTarget(
+	colName string,
+	field reflect.Value,
+) (any, *scanAssignment, bool, error) {
+	holder := new([]int64)
+
+	assignment := &scanAssignment{
+		Field: field,
+		AssignFunc: func() error {
+			if holder == nil || *holder == nil {
+				field.Set(reflect.Zero(field.Type()))
+				return nil
+			}
+
+			result := make([]uint32, 0, len(*holder))
+			for _, v := range *holder {
+				if v < 0 {
+					return dictionary.ErrNegativeValueUintError(colName, v)
+				}
+				if v > int64(^uint32(0)) {
+					return dictionary.ErrColOverflowError(colName, v)
+				}
+				result = append(result, uint32(v))
+			}
+
+			field.Set(reflect.ValueOf(result))
 			return nil
 		},
 	}

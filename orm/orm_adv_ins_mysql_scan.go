@@ -14,6 +14,7 @@ func executeMySQLAdvInsertScan(
 	meta *mapper.Meta,
 	buildRes builder.InsertAdvancedQueryResult,
 	resolved createBuildResolved,
+	dest []any,
 ) error {
 
 	if len(resolved.ReturningCols) == 0 {
@@ -43,6 +44,10 @@ func executeMySQLAdvInsertScan(
 	}
 
 	// step 3: scan
+	if len(dest) > 0 {
+		return o.executor.QueryRowContext(ctx, selectRes.Query, selectRes.Args...).Scan(dest...)
+	}
+
 	targets, assigns, err := prepareAdvInsScanTargets(selectRes.ReturningCols, o.Dialect())
 	if err != nil {
 		return err
