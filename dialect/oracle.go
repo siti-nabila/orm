@@ -28,6 +28,19 @@ func (d Oracle) SupportReturning() bool {
 	return true
 }
 
+func (d Oracle) PaginationClause(limit, offset *int) string {
+	var clause string
+	if offset != nil {
+		clause = fmt.Sprintf(" OFFSET %d ROWS", *offset)
+	} else if limit != nil {
+		clause = " OFFSET 0 ROWS"
+	}
+	if limit != nil {
+		clause += fmt.Sprintf(" FETCH NEXT %d ROWS ONLY", *limit)
+	}
+	return clause
+}
+
 func (d Oracle) Name() string {
 	return "oracle"
 }

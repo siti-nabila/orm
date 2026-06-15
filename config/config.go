@@ -1,5 +1,7 @@
 package config
 
+import "github.com/siti-nabila/orm/pagination"
+
 type (
 	PlaceholderMode int
 	Config          struct {
@@ -9,6 +11,7 @@ type (
 		EnableDebug     bool
 		LogDryRunQuery  bool
 		LogLockQuery    bool
+		Pagination      pagination.Config
 	}
 )
 

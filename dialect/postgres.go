@@ -32,6 +32,10 @@ func (d Postgres) SupportReturning() bool {
 	return true
 }
 
+func (d Postgres) PaginationClause(limit, offset *int) string {
+	return buildLimitOffsetClause(limit, offset)
+}
+
 func (d Postgres) Name() string {
 	return "postgres"
 }

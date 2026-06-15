@@ -16,4 +16,7 @@ type (
 		Name() string
 		Type() DialectType
 	}
+	PaginationDialector interface {
+		PaginationClause(limit, offset *int) string
+	}
 )

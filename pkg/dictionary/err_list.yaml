@@ -217,3 +217,25 @@ errors:
     code: 4050
     en: "orm: scan destination cannot be empty."
     id: "orm: tujuan scan tidak boleh kosong."
+
+  # Pagination Errors
+  err_pagination_invalid_limit:
+    code: 4054
+    en: "orm: pagination limit must be -1, 0, or a positive number."
+    id: "orm: limit pagination harus bernilai -1, 0, atau bilangan positif."
+  err_pagination_offset_overflow:
+    code: 4055
+    en: "orm: pagination offset exceeds the supported integer range."
+    id: "orm: offset pagination melebihi rentang integer yang didukung."
+  err_pagination_total_with_join:
+    code: 4056
+    en: "orm: pagination total cannot be used with joins."
+    id: "orm: total pagination tidak dapat digunakan bersama join."
+  err_pagination_total_unsupported:
+    code: 4057
+    en: "orm: pagination total scanner is not supported."
+    id: "orm: scanner total pagination tidak didukung."
+  err_pagination_total_column_not_found:
+    code: 4058
+    en: "orm: pagination total column was not found in query result."
+    id: "orm: kolom total pagination tidak ditemukan pada hasil query."

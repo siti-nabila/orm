@@ -33,6 +33,11 @@ var (
 	ErrMustBeSlicePtr                  error
 	ErrDBScanPrimitiveMustSingleColumn error
 	ErrDBScanIntoEmptyDest             error
+	ErrPaginationInvalidLimit          error
+	ErrPaginationOffsetOverflow        error
+	ErrPaginationTotalWithJoin         error
+	ErrPaginationTotalUnsupported      error
+	ErrPaginationTotalColumnNotFound   error
 
 	// error bulk insert
 	ErrBulkInsertElemNil                    error
@@ -126,6 +131,12 @@ func init() {
 	ErrDBScanPrimitiveMustSingleColumn = errPack.New("err_db_scan_primitive_must_single_column")
 	// ErrDBScanIntoEmptyDest = errPack.NewError("err_scan_into_empty_dest")
 	ErrDBScanIntoEmptyDest = errPack.New("err_db_scan_into_empty_dest")
+	// pagination errors
+	ErrPaginationInvalidLimit = errPack.New("err_pagination_invalid_limit")
+	ErrPaginationOffsetOverflow = errPack.New("err_pagination_offset_overflow")
+	ErrPaginationTotalWithJoin = errPack.New("err_pagination_total_with_join")
+	ErrPaginationTotalUnsupported = errPack.New("err_pagination_total_unsupported")
+	ErrPaginationTotalColumnNotFound = errPack.New("err_pagination_total_column_not_found")
 	// error bulk insert
 	// ErrBulkInsertElemNil = errPack.NewError("err_bulk_insert_elem_nil")
 	ErrBulkInsertElemNil = errPack.New("err_bulk_insert_element_nil")

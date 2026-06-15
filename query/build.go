@@ -293,7 +293,7 @@ func (b *QueryBuilder) build() (QueryBuilderResult, error) {
 		if len(selectedCols) > 0 {
 			selectParts = append(selectParts, buildSelectColumnParts(d, cfg.QuoteIdentifier, selectedCols)...)
 		}
-	} else if len(b.selectExprs) == 0 {
+	} else if len(b.selectExprs) == 0 || b.includeModelColumns {
 		selectedCols = append(selectedCols, meta.Columns...)
 		selectParts = append(selectParts, buildSelectColumnParts(d, cfg.QuoteIdentifier, meta.Columns)...)
 	}
@@ -326,13 +326,7 @@ func (b *QueryBuilder) build() (QueryBuilderResult, error) {
 		query += " ORDER BY " + strings.Join(b.orderBys, ", ")
 	}
 
-	if b.limit != nil {
-		query += " LIMIT " + fmt.Sprint(*b.limit)
-	}
-
-	if b.offset != nil {
-		query += " OFFSET " + fmt.Sprint(*b.offset)
-	}
+	query += dialect.BuildPaginationClause(d, b.limit, b.offset)
 
 	dryRunMode := builder.DryRunModeQuery
 	if b.singleRow {
