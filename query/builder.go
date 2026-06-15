@@ -17,19 +17,24 @@ type (
 		PlaceholderMode() config.PlaceholderMode
 		ScanQuery(ctx context.Context, query string, args []any, selectedCols []mapper.ColumnMeta, dest any) error
 	}
+	pageQueryScanner interface {
+		ScanPageQuery(ctx context.Context, query string, args []any, selectedCols []mapper.ColumnMeta, dest any, totalColumn string) (*int64, error)
+	}
 
 	QueryBuilder struct {
-		ctx         context.Context
-		orm         ormQuery
-		model       any
-		selectCols  []string
-		conditions  []Condition
-		limit       *int
-		offset      *int
-		orderBys    []string
-		joins       []Join
-		selectExprs []string
-		singleRow   bool
+		ctx                 context.Context
+		orm                 ormQuery
+		model               any
+		selectCols          []string
+		conditions          []Condition
+		limit               *int
+		offset              *int
+		orderBys            []string
+		joins               []Join
+		selectExprs         []string
+		singleRow           bool
+		withTotal           bool
+		includeModelColumns bool
 	}
 	Join struct {
 		Type  string
@@ -164,6 +169,52 @@ func (b *QueryBuilder) WithContext(ctx context.Context) *QueryBuilder {
 	}
 	b.ctx = ctx
 	return b
+}
+
+func (b *QueryBuilder) WithTotal() *QueryBuilder {
+	b.withTotal = true
+	return b
+}
+
+func (b *QueryBuilder) clone() *QueryBuilder {
+	if b == nil {
+		return nil
+	}
+
+	cloned := *b
+	cloned.selectCols = append([]string(nil), b.selectCols...)
+	cloned.conditions = cloneConditions(b.conditions)
+	cloned.orderBys = append([]string(nil), b.orderBys...)
+	cloned.joins = append([]Join(nil), b.joins...)
+	cloned.selectExprs = append([]string(nil), b.selectExprs...)
+
+	if b.limit != nil {
+		limit := *b.limit
+		cloned.limit = &limit
+	}
+	if b.offset != nil {
+		offset := *b.offset
+		cloned.offset = &offset
+	}
+
+	return &cloned
+}
+
+func cloneConditions(conditions []Condition) []Condition {
+	cloned := make([]Condition, 0, len(conditions))
+	for _, condition := range conditions {
+		switch c := condition.(type) {
+		case ExpressionCondition:
+			c.Args = append([]any(nil), c.Args...)
+			cloned = append(cloned, c)
+		case GroupCondition:
+			c.Conditions = cloneConditions(c.Conditions)
+			cloned = append(cloned, c)
+		default:
+			cloned = append(cloned, condition)
+		}
+	}
+	return cloned
 }
 
 func (b *QueryBuilder) WhereIn(column string, values any) *QueryBuilder {

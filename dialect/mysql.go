@@ -2,6 +2,7 @@ package dialect
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/siti-nabila/orm/pkg/dictionary"
 )
@@ -28,6 +29,13 @@ func (d Mysql) QuoteIdentifier(s string) string {
 
 func (d Mysql) SupportReturning() bool {
 	return false
+}
+
+func (d Mysql) PaginationClause(limit, offset *int) string {
+	if limit == nil && offset != nil {
+		return fmt.Sprintf(" LIMIT 18446744073709551615 OFFSET %d", *offset)
+	}
+	return buildLimitOffsetClause(limit, offset)
 }
 
 func (d Mysql) Name() string {
