@@ -11,6 +11,10 @@ import (
 const totalItemsColumn = "__orm_total_items"
 
 func (b *QueryBuilder) Paginate(dest any, params pagination.Params) (pagination.Meta, error) {
+	if b.orm == nil {
+		return pagination.Meta{}, dictionary.ErrDBQueryEmpty
+	}
+
 	params, err := pagination.NormalizeWithConfig(params, b.orm.Config().Pagination)
 	if err != nil {
 		return pagination.Meta{}, err
@@ -62,6 +66,10 @@ func (b *QueryBuilder) Paginate(dest any, params pagination.Params) (pagination.
 }
 
 func (b *QueryBuilder) DryRunPaginate(params pagination.Params) (builder.DryRunResult, error) {
+	if b.orm == nil {
+		return builder.DryRunResult{}, dictionary.ErrDBQueryEmpty
+	}
+
 	params, err := pagination.NormalizeWithConfig(params, b.orm.Config().Pagination)
 	if err != nil {
 		return builder.DryRunResult{}, err

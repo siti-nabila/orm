@@ -327,6 +327,19 @@ func (b *QueryBuilder) DryRun() (builder.DryRunResult, error) {
 	}, nil
 }
 
+func (b *QueryBuilder) DryRunCount() (builder.DryRunResult, error) {
+	res, err := b.buildCount()
+	if err != nil {
+		return builder.DryRunResult{}, err
+	}
+
+	return builder.DryRunResult{
+		Query: res.Query,
+		Args:  res.Args,
+		Mode:  res.Mode,
+	}, nil
+}
+
 func (b *QueryBuilder) DryRunFirst() (builder.DryRunResult, error) {
 	limit := 1
 	b.limit = &limit

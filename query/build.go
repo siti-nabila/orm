@@ -341,6 +341,55 @@ func (b *QueryBuilder) build() (QueryBuilderResult, error) {
 	}, nil
 }
 
+func (b *QueryBuilder) buildCount() (QueryBuilderResult, error) {
+	if b.orm == nil {
+		return QueryBuilderResult{}, dictionary.ErrDBQueryEmpty
+	}
+
+	if b.model == nil {
+		return QueryBuilderResult{}, dictionary.ErrDBQueryEmpty
+	}
+
+	if len(b.selectExprs) > 0 {
+		return QueryBuilderResult{}, dictionary.ErrPaginationTotalUnsupported
+	}
+
+	cfg := b.orm.Config()
+	d := b.orm.Dialect()
+	mode := b.orm.PlaceholderMode()
+
+	meta, err := mapper.Parse(b.model, cfg.UseSnakeCase)
+	if err != nil {
+		return QueryBuilderResult{}, err
+	}
+
+	table := meta.Table
+	if cfg.QuoteIdentifier {
+		table = d.QuoteIdentifier(table)
+	}
+
+	query := fmt.Sprintf("SELECT COUNT(*) FROM %s", table)
+
+	for _, j := range b.joins {
+		query += " " + j.Type + " " + j.Table + " ON " + j.On
+	}
+
+	whereQuery, args, _, err := buildConditions(d, mode, b.conditions, 1)
+	if err != nil {
+		return QueryBuilderResult{}, err
+	}
+
+	if whereQuery != "" {
+		query += " WHERE " + whereQuery
+	}
+
+	return QueryBuilderResult{
+		Query: query,
+		Args:  args,
+		Mode:  builder.DryRunModeQueryRow,
+	}, nil
+}
+
 func (b *QueryBuilder) Scan(dest any) error {
 	if dest == nil {
 		return dictionary.ErrDBQueryEmpty
