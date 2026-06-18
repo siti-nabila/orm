@@ -38,6 +38,7 @@ var (
 	ErrPaginationTotalWithJoin         error
 	ErrPaginationTotalUnsupported      error
 	ErrPaginationTotalColumnNotFound   error
+	ErrInvalidWhereOperator            error
 
 	// error bulk insert
 	ErrBulkInsertElemNil                    error
@@ -137,6 +138,7 @@ func init() {
 	ErrPaginationTotalWithJoin = errPack.New("err_pagination_total_with_join")
 	ErrPaginationTotalUnsupported = errPack.New("err_pagination_total_unsupported")
 	ErrPaginationTotalColumnNotFound = errPack.New("err_pagination_total_column_not_found")
+	ErrInvalidWhereOperator = errPack.New("err_invalid_where_operator")
 	// error bulk insert
 	// ErrBulkInsertElemNil = errPack.NewError("err_bulk_insert_elem_nil")
 	ErrBulkInsertElemNil = errPack.New("err_bulk_insert_element_nil")

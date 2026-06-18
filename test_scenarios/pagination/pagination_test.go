@@ -58,6 +58,145 @@ func TestNormalizeWithConfig(t *testing.T) {
 	}
 }
 
+func TestBuildPageInfo(t *testing.T) {
+	tests := []struct {
+		name       string
+		opts       pagination.PaginationOptions
+		cfg        pagination.Config
+		totalRows  int64
+		wantInfo   pagination.PageInfo
+		wantOffset int
+	}{
+		{
+			name: "total rows zero normalizes page and per page",
+			opts: pagination.PaginationOptions{
+				Page:    0,
+				PerPage: 0,
+			},
+			totalRows: 0,
+			wantInfo: pagination.PageInfo{
+				Page:    1,
+				PerPage: pagination.DefaultLimit,
+			},
+			wantOffset: 0,
+		},
+		{
+			name: "page greater than one has no prev when total rows zero",
+			opts: pagination.PaginationOptions{
+				Page:    3,
+				PerPage: 10,
+			},
+			totalRows: 0,
+			wantInfo: pagination.PageInfo{
+				Page:    3,
+				PerPage: 10,
+			},
+			wantOffset: 20,
+		},
+		{
+			name: "exact division calculates total pages",
+			opts: pagination.PaginationOptions{
+				Page:    1,
+				PerPage: 5,
+			},
+			totalRows: 20,
+			wantInfo: pagination.PageInfo{
+				Page:       1,
+				PerPage:    5,
+				TotalRows:  20,
+				TotalPages: 4,
+				HasNext:    true,
+			},
+			wantOffset: 0,
+		},
+		{
+			name: "remainder rounds total pages up",
+			opts: pagination.PaginationOptions{
+				Page:    2,
+				PerPage: 5,
+			},
+			totalRows: 23,
+			wantInfo: pagination.PageInfo{
+				Page:       2,
+				PerPage:    5,
+				TotalRows:  23,
+				TotalPages: 5,
+				HasNext:    true,
+				HasPrev:    true,
+			},
+			wantOffset: 5,
+		},
+		{
+			name: "last page has previous but no next",
+			opts: pagination.PaginationOptions{
+				Page:    5,
+				PerPage: 5,
+			},
+			totalRows: 23,
+			wantInfo: pagination.PageInfo{
+				Page:       5,
+				PerPage:    5,
+				TotalRows:  23,
+				TotalPages: 5,
+				HasPrev:    true,
+			},
+			wantOffset: 20,
+		},
+		{
+			name: "page greater than total pages has previous but no next",
+			opts: pagination.PaginationOptions{
+				Page:    7,
+				PerPage: 5,
+			},
+			totalRows: 23,
+			wantInfo: pagination.PageInfo{
+				Page:       7,
+				PerPage:    5,
+				TotalRows:  23,
+				TotalPages: 5,
+				HasPrev:    true,
+			},
+			wantOffset: 30,
+		},
+		{
+			name: "max limit caps per page before page info",
+			opts: pagination.PaginationOptions{
+				Page:     2,
+				PerPage:  50,
+				MaxLimit: 20,
+			},
+			totalRows: 45,
+			wantInfo: pagination.PageInfo{
+				Page:       2,
+				PerPage:    20,
+				TotalRows:  45,
+				TotalPages: 3,
+				HasNext:    true,
+				HasPrev:    true,
+			},
+			wantOffset: 20,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			opts, err := pagination.NormalizeOptionsWithConfig(tt.opts, tt.cfg)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			got := pagination.BuildPageInfo(opts, tt.totalRows)
+			if !reflect.DeepEqual(got, tt.wantInfo) {
+				t.Fatalf("unexpected page info: got=%+v want=%+v", got, tt.wantInfo)
+			}
+
+			if gotOffset := pagination.OptionsOffset(opts); gotOffset != tt.wantOffset {
+				t.Fatalf("unexpected offset: got=%d want=%d", gotOffset, tt.wantOffset)
+			}
+		})
+	}
+}
+
 func TestCollectionPaginate(t *testing.T) {
 	type item struct {
 		ID    int

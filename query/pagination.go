@@ -1,6 +1,7 @@
 package query
 
 import (
+	"context"
 	"reflect"
 
 	"github.com/siti-nabila/orm/builder"
@@ -65,6 +66,48 @@ func (b *QueryBuilder) Paginate(dest any, params pagination.Params) (pagination.
 	return pagination.BuildMeta(params, itemCount, hasNext, total), nil
 }
 
+func (b *QueryBuilder) ScanPaginate(ctx context.Context, dest any, opts pagination.PaginationOptions) (*pagination.PageInfo, error) {
+	if b.orm == nil {
+		return nil, dictionary.ErrDBQueryEmpty
+	}
+
+	opts, err := pagination.NormalizeOptionsWithConfig(opts, b.orm.Config().Pagination)
+	if err != nil {
+		return nil, err
+	}
+	if err := validatePaginationDest(dest); err != nil {
+		return nil, err
+	}
+
+	scanCtx := ctx
+	if scanCtx == nil {
+		scanCtx = b.ctx
+	}
+
+	countRes, err := b.buildCount()
+	if err != nil {
+		return nil, err
+	}
+
+	var totalRows int64
+	if err := b.orm.ScanQuery(scanCtx, countRes.Query, countRes.Args, countRes.SelectedCols, &totalRows); err != nil {
+		return nil, err
+	}
+
+	pageBuilder := b.scanPaginateBuilder(opts)
+	dataRes, err := pageBuilder.build()
+	if err != nil {
+		return nil, err
+	}
+
+	if err := b.orm.ScanQuery(scanCtx, dataRes.Query, dataRes.Args, dataRes.SelectedCols, dest); err != nil {
+		return nil, err
+	}
+
+	pageInfo := pagination.BuildPageInfo(opts, totalRows)
+	return &pageInfo, nil
+}
+
 func (b *QueryBuilder) DryRunPaginate(params pagination.Params) (builder.DryRunResult, error) {
 	if b.orm == nil {
 		return builder.DryRunResult{}, dictionary.ErrDBQueryEmpty
@@ -109,6 +152,16 @@ func (b *QueryBuilder) paginationBuilder(params pagination.Params) *QueryBuilder
 		)
 	}
 
+	return pageBuilder
+}
+
+func (b *QueryBuilder) scanPaginateBuilder(opts pagination.PaginationOptions) *QueryBuilder {
+	pageBuilder := b.clone()
+	limit := opts.PerPage
+	offset := pagination.OptionsOffset(opts)
+	pageBuilder.limit = &limit
+	pageBuilder.offset = &offset
+	pageBuilder.singleRow = false
 	return pageBuilder
 }
 
