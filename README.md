@@ -96,7 +96,7 @@ cfg := config.Config{
 ### In-Memory Pagination
 
 Use `SlicePaginator` through `FromSlice()` with the same pagination parameters
-and metadata for slices already loaded in memory:
+for slices already loaded in memory. It returns `pagination.PageData[T]`:
 
 ```go
 result, err := pagination.FromSlice(users).
@@ -107,6 +107,9 @@ result, err := pagination.FromSlice(users).
         return a.ID < b.ID
     }).
     Paginate(pagination.Params{Page: 1, Limit: 20})
+
+fmt.Println(result.Items)
+fmt.Println(result.Total)
 ```
 
 Use `FromSliceWithConfig()` to customize its default and maximum limit:

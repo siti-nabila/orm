@@ -38,18 +38,23 @@ type (
 		TotalPages *int
 	}
 
-	Result[T any] struct {
-		Data []T
-		Meta Meta
-	}
-
-	PageInfo struct {
+	PageMeta struct {
 		Page       int
-		PerPage    int
-		TotalRows  int64
+		Limit      int
+		Total      int64
 		TotalPages int
 		HasNext    bool
 		HasPrev    bool
+	}
+
+	PageData[T any] struct {
+		Items      []T   `json:"items"`
+		Total      int64 `json:"total"`
+		Page       int   `json:"page"`
+		Limit      int   `json:"limit"`
+		TotalPages int   `json:"total_pages"`
+		HasNext    bool  `json:"has_next"`
+		HasPrev    bool  `json:"has_prev"`
 	}
 )
 
@@ -126,15 +131,47 @@ func OptionsOffset(opts PaginationOptions) int {
 	return (opts.Page - 1) * opts.PerPage
 }
 
-func BuildPageInfo(opts PaginationOptions, totalRows int64) PageInfo {
+func BuildPageMeta(opts PaginationOptions, totalRows int64) PageMeta {
 	totalPages := calculateTotalPages(totalRows, opts.PerPage)
-	return PageInfo{
+	return PageMeta{
 		Page:       opts.Page,
-		PerPage:    opts.PerPage,
-		TotalRows:  totalRows,
+		Limit:      opts.PerPage,
+		Total:      totalRows,
 		TotalPages: totalPages,
 		HasNext:    opts.Page < totalPages,
 		HasPrev:    opts.Page > 1 && totalPages > 0,
+	}
+}
+
+func NewPageData[T any](items []T, meta PageMeta) PageData[T] {
+	if items == nil {
+		items = []T{}
+	}
+
+	return PageData[T]{
+		Items:      items,
+		Total:      meta.Total,
+		Page:       meta.Page,
+		Limit:      meta.Limit,
+		TotalPages: meta.TotalPages,
+		HasNext:    meta.HasNext,
+		HasPrev:    meta.HasPrev,
+	}
+}
+
+func EmptyPageData[T any](page, limit int) PageData[T] {
+	if page <= 0 {
+		page = 1
+	}
+
+	return PageData[T]{
+		Items:      []T{},
+		Total:      0,
+		Page:       page,
+		Limit:      limit,
+		TotalPages: 0,
+		HasNext:    false,
+		HasPrev:    false,
 	}
 }
 

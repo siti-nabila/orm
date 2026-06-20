@@ -66,7 +66,7 @@ func (b *QueryBuilder) Paginate(dest any, params pagination.Params) (pagination.
 	return pagination.BuildMeta(params, itemCount, hasNext, total), nil
 }
 
-func (b *QueryBuilder) ScanPaginate(ctx context.Context, dest any, opts pagination.PaginationOptions) (*pagination.PageInfo, error) {
+func (b *QueryBuilder) ScanPaginate(ctx context.Context, dest any, opts pagination.PaginationOptions) (*pagination.PageMeta, error) {
 	if b.orm == nil {
 		return nil, dictionary.ErrDBQueryEmpty
 	}
@@ -104,8 +104,8 @@ func (b *QueryBuilder) ScanPaginate(ctx context.Context, dest any, opts paginati
 		return nil, err
 	}
 
-	pageInfo := pagination.BuildPageInfo(opts, totalRows)
-	return &pageInfo, nil
+	pageMeta := pagination.BuildPageMeta(opts, totalRows)
+	return &pageMeta, nil
 }
 
 func (b *QueryBuilder) DryRunScanPaginate(opts pagination.PaginationOptions) (builder.ScanPaginateDryRunResult, error) {

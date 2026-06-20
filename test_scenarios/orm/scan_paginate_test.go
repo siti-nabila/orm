@@ -189,7 +189,7 @@ func TestScanPaginateExecutesCountThenDataAndScansSlice(t *testing.T) {
 	db := orm.NewSqlQueryAdapter(context.Background(), conn, dialect.NewPostgres(), config.Config{})
 
 	var users []scanPaginateUser
-	pageInfo, err := db.UseModel(scanPaginateUser{}).
+	pageMeta, err := db.UseModel(scanPaginateUser{}).
 		Where("active = ?", true).
 		OrderBy("id ASC").
 		ScanPaginate(context.Background(), &users, orm.PaginationOptions{
@@ -204,16 +204,16 @@ func TestScanPaginateExecutesCountThenDataAndScansSlice(t *testing.T) {
 		t.Fatalf("unexpected users: %+v", users)
 	}
 
-	wantPageInfo := &orm.PageInfo{
+	wantPageMeta := &orm.PageMeta{
 		Page:       2,
-		PerPage:    2,
-		TotalRows:  3,
+		Limit:      2,
+		Total:      3,
 		TotalPages: 2,
 		HasNext:    false,
 		HasPrev:    true,
 	}
-	if !reflect.DeepEqual(pageInfo, wantPageInfo) {
-		t.Fatalf("unexpected page info: got=%+v want=%+v", pageInfo, wantPageInfo)
+	if !reflect.DeepEqual(pageMeta, wantPageMeta) {
+		t.Fatalf("unexpected page meta: got=%+v want=%+v", pageMeta, wantPageMeta)
 	}
 
 	queries := state.snapshotQueries()
@@ -250,7 +250,7 @@ func TestScanPaginateUsesWrappedCountForComplexQuery(t *testing.T) {
 	db := orm.NewSqlQueryAdapter(context.Background(), conn, dialect.NewPostgres(), config.Config{})
 
 	var users []scanPaginateUser
-	pageInfo, err := db.UseModel(scanPaginateUser{}).
+	pageMeta, err := db.UseModel(scanPaginateUser{}).
 		Select("name").
 		Distinct().
 		OrderBy("name ASC").
@@ -265,8 +265,8 @@ func TestScanPaginateUsesWrappedCountForComplexQuery(t *testing.T) {
 	if !reflect.DeepEqual(users, []scanPaginateUser{{Name: "one"}}) {
 		t.Fatalf("unexpected users: %+v", users)
 	}
-	if pageInfo.TotalRows != 1 || pageInfo.TotalPages != 1 {
-		t.Fatalf("unexpected page info: %+v", pageInfo)
+	if pageMeta.Total != 1 || pageMeta.TotalPages != 1 {
+		t.Fatalf("unexpected page meta: %+v", pageMeta)
 	}
 
 	queries := state.snapshotQueries()
@@ -303,7 +303,7 @@ func TestScanPaginateSecondPageHasPrevAndNextWithExampleUserData(t *testing.T) {
 	db := orm.NewSqlQueryAdapter(context.Background(), conn, dialect.NewPostgres(), config.Config{})
 
 	var users []scanPaginateAccount
-	pageInfo, err := db.UseModel(scanPaginateAccount{}).
+	pageMeta, err := db.UseModel(scanPaginateAccount{}).
 		OrderBy("id ASC").
 		ScanPaginate(context.Background(), &users, orm.PaginationOptions{
 			Page:    2,
@@ -322,16 +322,16 @@ func TestScanPaginateSecondPageHasPrevAndNextWithExampleUserData(t *testing.T) {
 		t.Fatalf("unexpected users: got=%+v want=%+v", users, wantUsers)
 	}
 
-	wantPageInfo := &orm.PageInfo{
+	wantPageMeta := &orm.PageMeta{
 		Page:       2,
-		PerPage:    3,
-		TotalRows:  23,
+		Limit:      3,
+		Total:      23,
 		TotalPages: 8,
 		HasNext:    true,
 		HasPrev:    true,
 	}
-	if !reflect.DeepEqual(pageInfo, wantPageInfo) {
-		t.Fatalf("unexpected page info: got=%+v want=%+v", pageInfo, wantPageInfo)
+	if !reflect.DeepEqual(pageMeta, wantPageMeta) {
+		t.Fatalf("unexpected page meta: got=%+v want=%+v", pageMeta, wantPageMeta)
 	}
 
 	queries := state.snapshotQueries()
@@ -346,22 +346,22 @@ func TestScanPaginateSecondPageHasPrevAndNextWithExampleUserData(t *testing.T) {
 	}
 }
 
-func TestScanPaginatePageInfoCalculation(t *testing.T) {
+func TestScanPaginatePageMetaCalculation(t *testing.T) {
 	tests := []struct {
 		name     string
 		total    int64
 		page     int
 		perPage  int
-		wantInfo orm.PageInfo
+		wantMeta orm.PageMeta
 	}{
 		{
 			name:    "zero rows on page greater than one",
 			total:   0,
 			page:    2,
 			perPage: 10,
-			wantInfo: orm.PageInfo{
-				Page:    2,
-				PerPage: 10,
+			wantMeta: orm.PageMeta{
+				Page:  2,
+				Limit: 10,
 			},
 		},
 		{
@@ -369,10 +369,10 @@ func TestScanPaginatePageInfoCalculation(t *testing.T) {
 			total:   4,
 			page:    1,
 			perPage: 2,
-			wantInfo: orm.PageInfo{
+			wantMeta: orm.PageMeta{
 				Page:       1,
-				PerPage:    2,
-				TotalRows:  4,
+				Limit:      2,
+				Total:      4,
 				TotalPages: 2,
 				HasNext:    true,
 			},
@@ -382,10 +382,10 @@ func TestScanPaginatePageInfoCalculation(t *testing.T) {
 			total:   5,
 			page:    1,
 			perPage: 2,
-			wantInfo: orm.PageInfo{
+			wantMeta: orm.PageMeta{
 				Page:       1,
-				PerPage:    2,
-				TotalRows:  5,
+				Limit:      2,
+				Total:      5,
 				TotalPages: 3,
 				HasNext:    true,
 			},
@@ -395,10 +395,10 @@ func TestScanPaginatePageInfoCalculation(t *testing.T) {
 			total:   5,
 			page:    2,
 			perPage: 2,
-			wantInfo: orm.PageInfo{
+			wantMeta: orm.PageMeta{
 				Page:       2,
-				PerPage:    2,
-				TotalRows:  5,
+				Limit:      2,
+				Total:      5,
 				TotalPages: 3,
 				HasNext:    true,
 				HasPrev:    true,
@@ -409,10 +409,10 @@ func TestScanPaginatePageInfoCalculation(t *testing.T) {
 			total:   3,
 			page:    2,
 			perPage: 2,
-			wantInfo: orm.PageInfo{
+			wantMeta: orm.PageMeta{
 				Page:       2,
-				PerPage:    2,
-				TotalRows:  3,
+				Limit:      2,
+				Total:      3,
 				TotalPages: 2,
 				HasPrev:    true,
 			},
@@ -434,8 +434,8 @@ func TestScanPaginatePageInfoCalculation(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !reflect.DeepEqual(got, &tt.wantInfo) {
-				t.Fatalf("unexpected page info: got=%+v want=%+v", got, &tt.wantInfo)
+			if !reflect.DeepEqual(got, &tt.wantMeta) {
+				t.Fatalf("unexpected page meta: got=%+v want=%+v", got, &tt.wantMeta)
 			}
 		})
 	}

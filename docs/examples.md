@@ -47,7 +47,7 @@ type UserRepository struct {
     db *orm.SqlQueryAdapter
 }
 
-func (r *UserRepository) FindPaginated(ctx context.Context, page, perPage int) ([]User, *orm.PageInfo, error) {
+func (r *UserRepository) FindPaginated(ctx context.Context, page, perPage int) ([]User, *orm.PageMeta, error) {
     var users []User
 
     builder, err := r.db.
@@ -57,7 +57,7 @@ func (r *UserRepository) FindPaginated(ctx context.Context, page, perPage int) (
         return nil, nil, err
     }
 
-    pageInfo, err := builder.
+    pageMeta, err := builder.
         OrderBy("created_at DESC").
         ScanPaginate(ctx, &users, orm.PaginationOptions{
             Page:    page,
@@ -67,9 +67,89 @@ func (r *UserRepository) FindPaginated(ctx context.Context, page, perPage int) (
         return nil, nil, err
     }
 
-    return users, pageInfo, nil
+    return users, pageMeta, nil
 }
 ```
+
+## Paginated API Response
+
+Frontend request:
+
+```json
+{
+  "page": 1,
+  "perPage": 20,
+  "joinDateFrom": "2026-01-01",
+  "joinDateTo": "2026-03-22",
+  "sortField": "joinDate",
+  "sortDirection": "DESC"
+}
+```
+
+Backend response:
+
+```json
+{
+  "items": [
+    {
+      "id": 1,
+      "name": "Nabila",
+      "email": "nabila@example.com",
+      "status": "ACTIVE",
+      "joinDate": "2026-01-10"
+    }
+  ],
+  "total": 55,
+  "page": 1,
+  "limit": 20,
+  "total_pages": 3,
+  "has_next": true,
+  "has_prev": false
+}
+```
+
+`items` contains the rows for the current page. `PageData[T]` also includes
+the total row count, page, limit, total pages, and next/prev flags.
+
+Empty result:
+
+```json
+{
+  "items": [],
+  "total": 0,
+  "page": 1,
+  "limit": 20,
+  "total_pages": 0,
+  "has_next": false,
+  "has_prev": false
+}
+```
+
+Last page:
+
+```json
+{
+  "items": [
+    {
+      "id": 41,
+      "name": "Last User",
+      "email": "last.user@example.com",
+      "status": "ACTIVE",
+      "joinDate": "2026-03-22"
+    }
+  ],
+  "total": 41,
+  "page": 3,
+  "limit": 20,
+  "total_pages": 3,
+  "has_next": false,
+  "has_prev": true
+}
+```
+
+When accepting dynamic frontend filters, map request fields to known database
+columns and never accept raw SQL from the client. For timestamp ranges, parse
+date strings before the repository call and use an exclusive end boundary.
 
 ## Write In A Transaction
 
@@ -94,7 +174,7 @@ func CreateUser(ctx context.Context, conn *sql.DB, user *User) error {
 ## In-Memory Slice Pagination
 
 ```go
-func ActiveUserPage(users []User) (pagination.Result[User], error) {
+func ActiveUserPage(users []User) (pagination.PageData[User], error) {
     return pagination.
         FromSlice(users).
         Filter(func(user User) bool {
