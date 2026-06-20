@@ -23,6 +23,12 @@ type (
 		Limit int
 	}
 
+	PaginationOptions struct {
+		Page     int
+		PerPage  int
+		MaxLimit int
+	}
+
 	Meta struct {
 		Page       int
 		Limit      int
@@ -35,6 +41,15 @@ type (
 	Result[T any] struct {
 		Data []T
 		Meta Meta
+	}
+
+	PageInfo struct {
+		Page       int
+		PerPage    int
+		TotalRows  int64
+		TotalPages int
+		HasNext    bool
+		HasPrev    bool
 	}
 )
 
@@ -66,6 +81,30 @@ func NormalizeWithConfig(params Params, cfg Config) (Params, error) {
 	return params, nil
 }
 
+func NormalizeOptionsWithConfig(opts PaginationOptions, cfg Config) (PaginationOptions, error) {
+	if opts.PerPage < 0 {
+		return PaginationOptions{}, dictionary.ErrPaginationInvalidLimit
+	}
+
+	if opts.MaxLimit > 0 {
+		cfg.MaxLimit = opts.MaxLimit
+	}
+
+	params, err := NormalizeWithConfig(Params{
+		Page:  opts.Page,
+		Limit: opts.PerPage,
+	}, cfg)
+	if err != nil {
+		return PaginationOptions{}, err
+	}
+
+	return PaginationOptions{
+		Page:     params.Page,
+		PerPage:  params.Limit,
+		MaxLimit: opts.MaxLimit,
+	}, nil
+}
+
 func normalizeConfig(cfg Config) Config {
 	if cfg.MaxLimit < 1 {
 		cfg.MaxLimit = MaxLimit
@@ -81,6 +120,30 @@ func normalizeConfig(cfg Config) Config {
 
 func Offset(params Params) int {
 	return (params.Page - 1) * params.Limit
+}
+
+func OptionsOffset(opts PaginationOptions) int {
+	return (opts.Page - 1) * opts.PerPage
+}
+
+func BuildPageInfo(opts PaginationOptions, totalRows int64) PageInfo {
+	totalPages := calculateTotalPages(totalRows, opts.PerPage)
+	return PageInfo{
+		Page:       opts.Page,
+		PerPage:    opts.PerPage,
+		TotalRows:  totalRows,
+		TotalPages: totalPages,
+		HasNext:    opts.Page < totalPages,
+		HasPrev:    opts.Page > 1 && totalPages > 0,
+	}
+}
+
+func calculateTotalPages(totalRows int64, perPage int) int {
+	if totalRows <= 0 || perPage <= 0 {
+		return 0
+	}
+
+	return int((totalRows + int64(perPage) - 1) / int64(perPage))
 }
 
 func BuildMeta(params Params, itemCount int, hasNext bool, total *int64) Meta {

@@ -2,37 +2,37 @@ package pagination
 
 import "sort"
 
-type Collection[T any] struct {
+type SlicePaginator[T any] struct {
 	data       []T
 	predicates []func(T) bool
 	less       func(a, b T) bool
 	config     Config
 }
 
-func FromSlice[T any](data []T) *Collection[T] {
+func FromSlice[T any](data []T) *SlicePaginator[T] {
 	return FromSliceWithConfig(data, Config{})
 }
 
-func FromSliceWithConfig[T any](data []T, cfg Config) *Collection[T] {
-	return &Collection[T]{
+func FromSliceWithConfig[T any](data []T, cfg Config) *SlicePaginator[T] {
+	return &SlicePaginator[T]{
 		data:   append([]T(nil), data...),
 		config: cfg,
 	}
 }
 
-func (c *Collection[T]) Filter(predicate func(T) bool) *Collection[T] {
+func (c *SlicePaginator[T]) Filter(predicate func(T) bool) *SlicePaginator[T] {
 	if predicate != nil {
 		c.predicates = append(c.predicates, predicate)
 	}
 	return c
 }
 
-func (c *Collection[T]) Sort(less func(a, b T) bool) *Collection[T] {
+func (c *SlicePaginator[T]) Sort(less func(a, b T) bool) *SlicePaginator[T] {
 	c.less = less
 	return c
 }
 
-func (c *Collection[T]) Paginate(params Params) (Result[T], error) {
+func (c *SlicePaginator[T]) Paginate(params Params) (Result[T], error) {
 	params, err := NormalizeWithConfig(params, c.config)
 	if err != nil {
 		return Result[T]{}, err
@@ -69,7 +69,7 @@ func (c *Collection[T]) Paginate(params Params) (Result[T], error) {
 	}, nil
 }
 
-func (c *Collection[T]) matches(item T) bool {
+func (c *SlicePaginator[T]) matches(item T) bool {
 	for _, predicate := range c.predicates {
 		if !predicate(item) {
 			return false

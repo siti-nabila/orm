@@ -32,6 +32,9 @@ type (
 		orderBys            []string
 		joins               []Join
 		selectExprs         []string
+		groupBys            []string
+		having              []Condition
+		distinct            bool
 		singleRow           bool
 		withTotal           bool
 		includeModelColumns bool
@@ -73,6 +76,11 @@ func (b *QueryBuilder) Select(cols ...string) *QueryBuilder {
 		b.selectCols = append(b.selectCols, col)
 	}
 
+	return b
+}
+
+func (b *QueryBuilder) Distinct() *QueryBuilder {
+	b.distinct = true
 	return b
 }
 
@@ -154,6 +162,42 @@ func (b *QueryBuilder) OrderBy(expressions ...string) *QueryBuilder {
 
 	return b
 }
+
+func (b *QueryBuilder) GroupBy(expressions ...string) *QueryBuilder {
+	if len(expressions) == 0 {
+		return b
+	}
+
+	for _, e := range expressions {
+		if e == "" {
+			continue
+		}
+		b.groupBys = append(b.groupBys, e)
+	}
+
+	return b
+}
+
+func (b *QueryBuilder) Having(query string, args ...any) *QueryBuilder {
+	b.having = append(b.having, ExpressionCondition{
+		Operator: ClauseAnd,
+		Query:    query,
+		Args:     args,
+	})
+
+	return b
+}
+
+func (b *QueryBuilder) OrHaving(query string, args ...any) *QueryBuilder {
+	b.having = append(b.having, ExpressionCondition{
+		Operator: ClauseOr,
+		Query:    query,
+		Args:     args,
+	})
+
+	return b
+}
+
 func (b *QueryBuilder) Offset(n int) *QueryBuilder {
 	if n < 0 {
 		return b
@@ -187,6 +231,8 @@ func (b *QueryBuilder) clone() *QueryBuilder {
 	cloned.orderBys = append([]string(nil), b.orderBys...)
 	cloned.joins = append([]Join(nil), b.joins...)
 	cloned.selectExprs = append([]string(nil), b.selectExprs...)
+	cloned.groupBys = append([]string(nil), b.groupBys...)
+	cloned.having = cloneConditions(b.having)
 
 	if b.limit != nil {
 		limit := *b.limit
@@ -316,6 +362,19 @@ func (b *QueryBuilder) RightJoin(table string, on string) *QueryBuilder {
 
 func (b *QueryBuilder) DryRun() (builder.DryRunResult, error) {
 	res, err := b.build()
+	if err != nil {
+		return builder.DryRunResult{}, err
+	}
+
+	return builder.DryRunResult{
+		Query: res.Query,
+		Args:  res.Args,
+		Mode:  res.Mode,
+	}, nil
+}
+
+func (b *QueryBuilder) DryRunCount() (builder.DryRunResult, error) {
+	res, err := b.buildCount()
 	if err != nil {
 		return builder.DryRunResult{}, err
 	}

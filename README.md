@@ -29,6 +29,12 @@ go get github.com/siti-nabila/orm
 
 ---
 
+## 📚 Documentation
+
+User-facing guides live in [`docs/`](docs/index.md).
+
+---
+
 ## 🔍 READ (SELECT)
 
 ```go
@@ -89,8 +95,8 @@ cfg := config.Config{
 
 ### In-Memory Pagination
 
-Use the same pagination parameters and metadata for slices already loaded in
-memory:
+Use `SlicePaginator` through `FromSlice()` with the same pagination parameters
+and metadata for slices already loaded in memory:
 
 ```go
 result, err := pagination.FromSlice(users).

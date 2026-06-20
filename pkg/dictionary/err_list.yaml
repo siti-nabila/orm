@@ -239,3 +239,7 @@ errors:
     code: 4058
     en: "orm: pagination total column was not found in query result."
     id: "orm: kolom total pagination tidak ditemukan pada hasil query."
+  err_invalid_where_operator:
+    code: 4059
+    en: "orm: invalid where operator."
+    id: "orm: operator where tidak valid."

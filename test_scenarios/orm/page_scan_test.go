@@ -1,4 +1,4 @@
-package orm
+package orm_test
 
 import (
 	"context"
@@ -11,6 +11,7 @@ import (
 	"github.com/siti-nabila/orm/config"
 	"github.com/siti-nabila/orm/db"
 	"github.com/siti-nabila/orm/dialect"
+	"github.com/siti-nabila/orm/orm"
 )
 
 const pageScanTestDriverName = "orm_page_scan_test"
@@ -85,7 +86,7 @@ func TestScanPageQuery(t *testing.T) {
 	}
 	defer conn.Close()
 
-	o := New(db.New(conn, dialect.NewPostgres()), config.Config{})
+	o := orm.New(db.New(conn, dialect.NewPostgres()), config.Config{})
 	var models []pageScanTestModel
 	total, err := o.ScanPageQuery(
 		context.Background(),
