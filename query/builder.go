@@ -220,6 +220,13 @@ func (b *QueryBuilder) WithTotal() *QueryBuilder {
 	return b
 }
 
+func (b *QueryBuilder) DialectType() dialect.DialectType {
+	if b == nil || b.orm == nil {
+		return ""
+	}
+	return b.orm.Dialect().Type()
+}
+
 func (b *QueryBuilder) clone() *QueryBuilder {
 	if b == nil {
 		return nil

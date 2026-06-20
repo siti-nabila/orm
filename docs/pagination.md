@@ -151,8 +151,13 @@ type UserReader struct {
     db  *orm.SqlQueryAdapter
 }
 
+// AllowedFields returns the allowed frontend-to-database field mapping.
+//
+// The map key is the JSON/request field name used by the frontend.
+// The map value is the actual database column name used by the query builder.
 func (r *UserReader) AllowedFields() map[string]string {
     return map[string]string{
+        // frontend field -> database column
         "id":       "id",
         "name":     "name",
         "email":    "email",
@@ -178,7 +183,9 @@ func (r *UserReader) Page(opts orm.QueryOptions) (orm.PageData[User], error) {
 
 `AllowedFields()` maps frontend field names to database columns. `QueryPage`
 uses this mapping for `Select`, `Filters`, `Search`, `SearchAnd`, and `Sort`.
-Frontend field names are not passed directly to the query builder.
+Frontend field names are not passed directly to the query builder. Fields that
+are not present in the map are rejected, and raw SQL from frontend input should
+not be accepted.
 
 ```go
 type QueryOptions struct {
@@ -206,6 +213,7 @@ type Filter struct {
 type SearchQuery struct {
     Fields  []string
     Keyword string
+    Mode    SearchMode
 }
 
 type SearchField struct {
@@ -250,9 +258,172 @@ opts := orm.QueryOptions{
 ```
 
 Filters with `Values` use `WhereIn`. Filters without `Values` use `WhereOp`.
-`Search` applies OR-style `LIKE` predicates across allowed fields. `SearchAnd`
-applies AND-style `LIKE` predicates per allowed field. Sorting direction is
-derived from `Desc`.
+`Search` applies OR-style predicates across allowed fields. `SearchAnd` applies
+AND-style contains predicates per allowed field. Sorting direction is derived
+from `Desc`.
+
+## Search Modes
+
+`SearchQuery.Mode` controls how `Search` builds keyword conditions:
+
+```go
+const (
+    SearchModeContains        SearchMode = "contains"
+    SearchModePrefix          SearchMode = "prefix"
+    SearchModeFullText        SearchMode = "full_text"
+    SearchModeTrigram         SearchMode = "trigram"
+    SearchModeFullTextTrigram SearchMode = "full_text_trigram"
+)
+```
+
+If `Mode` is empty, `QueryPage` uses `SearchModeContains`. Contains search is
+portable across PostgreSQL, MySQL, and Oracle:
+
+```sql
+column LIKE ?
+```
+
+with an argument like:
+
+```go
+"%keyword%"
+```
+
+`SearchModeContains` is convenient, but `LIKE '%keyword%'` may not be
+index-friendly on large tables. `SearchModePrefix` is also portable and uses an
+argument like `keyword%`, which can be more index-friendly when the database
+and index support prefix matching.
+
+The optimized modes are PostgreSQL-only in this phase:
+
+- `SearchModeFullText` uses a configured `tsvector` column.
+- `SearchModeTrigram` uses `ILIKE ?` on the configured source column and assumes the application owner may create a `pg_trgm` index.
+- `SearchModeFullTextTrigram` uses full-text search for completed tokens and `ILIKE ?` for the final partial token.
+
+MySQL and Oracle support only `contains` and `prefix` in this phase. Asking for
+`full_text`, `trigram`, or `full_text_trigram` on MySQL or Oracle returns a
+dictionary error.
+
+Advanced search modes use `QueryPageWithConfig`:
+
+```go
+type QueryPageConfig struct {
+    // AllowedFields maps frontend JSON/request fields to database columns.
+    AllowedFields map[string]string
+    SearchFields  map[string]SearchFieldConfig
+}
+
+type SearchFieldConfig struct {
+    Column           string
+    FullTextColumn   string
+    FullTextLanguage FullTextLanguage
+    FullTextOperator FullTextOperator
+    Modes            []SearchMode
+}
+```
+
+Example:
+
+```go
+func (r *UserReader) SearchFields() map[string]orm.SearchFieldConfig {
+    return map[string]orm.SearchFieldConfig{
+        "name": {
+            Column:         "name",
+            FullTextColumn: "fts_keyword",
+            Modes: []orm.SearchMode{
+                orm.SearchModeFullText,
+                orm.SearchModeTrigram,
+                orm.SearchModeFullTextTrigram,
+            },
+        },
+    }
+}
+
+func (r *UserReader) Page(opts orm.QueryOptions) (orm.PageData[User], error) {
+    var items []User
+
+    return orm.QueryPageWithConfig(
+        r.ctx,
+        r.db.UseModel(User{}),
+        &items,
+        orm.QueryPageConfig{
+            AllowedFields: r.AllowedFields(),
+            SearchFields:  r.SearchFields(),
+        },
+        opts,
+    )
+}
+```
+
+`FullTextLanguage` is an enum, not a raw frontend string:
+
+```go
+const (
+    FullTextSimple  FullTextLanguage = "simple"
+    FullTextEnglish FullTextLanguage = "english"
+)
+```
+
+Empty language defaults to `FullTextSimple`. Invalid languages return a
+dictionary error.
+
+`FullTextOperator` is separate from the normal `Operator` used by filters and
+`WhereOp`:
+
+```go
+const (
+    FullTextMatch       FullTextOperator = "match"
+    FullTextContains    FullTextOperator = "contains"
+    FullTextContainedBy FullTextOperator = "contained_by"
+)
+```
+
+`FullTextOperator` is only for full-text search modes. Do not add `@@`, `<@`,
+or `@>` to normal `WhereOp` usage. Empty operator defaults to
+`FullTextMatch`.
+
+For `SearchModeFullTextTrigram`, the keyword is split by whitespace. With:
+
+```text
+joko yono wo
+```
+
+the completed full-text tokens become:
+
+```go
+"joko & yono"
+```
+
+and the partial token becomes:
+
+```go
+"%wo%"
+```
+
+If the keyword has one token, the hybrid mode uses full-text search only.
+Ranking with `ts_rank` or `ts_rank_cd`, similarity ordering, and public
+ranking/similarity fields are out of scope for this phase.
+
+The ORM does not create PostgreSQL extensions or indexes. Application owners
+should add migrations when using optimized search.
+
+Full-text index example:
+
+```sql
+CREATE INDEX users_fts_keyword_idx
+ON users
+USING GIN (fts_keyword);
+```
+
+Trigram setup example:
+
+```sql
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+CREATE INDEX users_name_trgm_idx
+ON users
+USING GIN (name gin_trgm_ops);
+```
 
 ## SlicePaginator
 

@@ -11,34 +11,42 @@ var (
 	// errPack faults.YamlPackage
 	errPack errorpackage.DictionaryPack
 
-	ErrDBConn                          error
-	ErrDBPlaceholder                   error
-	ErrDBQueryEmpty                    error
-	ErrDuplicateRow                    error
-	ErrRowNotFound                     error
-	ErrDBUnknown                       error
-	ErrForeignKey                      error
-	ErrDBTooManyArguments              error
-	ErrPrimaryKeyNotFound              error
-	ErrPrimaryKeyEmpty                 error
-	ErrColumnNotFound                  error
-	ErrDBScanNilDest                   error
-	ErrDBScanNotPointerDest            error
-	ErrDBScanUnsupportedDest           error
-	ErrDBScanUnimplemented             error
-	ErrDBScanMetaNil                   error
-	ErrDBScanMustBeSliceStruct         error
-	ErrInvalidValue                    error
-	ErrMustBeStructPtr                 error
-	ErrMustBeSlicePtr                  error
-	ErrDBScanPrimitiveMustSingleColumn error
-	ErrDBScanIntoEmptyDest             error
-	ErrPaginationInvalidLimit          error
-	ErrPaginationOffsetOverflow        error
-	ErrPaginationTotalWithJoin         error
-	ErrPaginationTotalUnsupported      error
-	ErrPaginationTotalColumnNotFound   error
-	ErrInvalidWhereOperator            error
+	ErrDBConn                               error
+	ErrDBPlaceholder                        error
+	ErrDBQueryEmpty                         error
+	ErrDuplicateRow                         error
+	ErrRowNotFound                          error
+	ErrDBUnknown                            error
+	ErrForeignKey                           error
+	ErrDBTooManyArguments                   error
+	ErrPrimaryKeyNotFound                   error
+	ErrPrimaryKeyEmpty                      error
+	ErrColumnNotFound                       error
+	ErrDBScanNilDest                        error
+	ErrDBScanNotPointerDest                 error
+	ErrDBScanUnsupportedDest                error
+	ErrDBScanUnimplemented                  error
+	ErrDBScanMetaNil                        error
+	ErrDBScanMustBeSliceStruct              error
+	ErrInvalidValue                         error
+	ErrMustBeStructPtr                      error
+	ErrMustBeSlicePtr                       error
+	ErrDBScanPrimitiveMustSingleColumn      error
+	ErrDBScanIntoEmptyDest                  error
+	ErrPaginationInvalidLimit               error
+	ErrPaginationOffsetOverflow             error
+	ErrPaginationTotalWithJoin              error
+	ErrPaginationTotalUnsupported           error
+	ErrPaginationTotalColumnNotFound        error
+	ErrInvalidWhereOperator                 error
+	ErrInvalidSearchMode                    error
+	ErrUnsupportedSearchModeForDialect      error
+	ErrInvalidFullTextLanguage              error
+	ErrInvalidFullTextOperator              error
+	ErrFullTextColumnRequired               error
+	ErrSearchFieldNotAllowed                error
+	ErrSearchModeNotAllowedForField         error
+	ErrFullTextOperatorRequiresFullTextMode error
 
 	// error bulk insert
 	ErrBulkInsertElemNil                    error
@@ -139,6 +147,14 @@ func init() {
 	ErrPaginationTotalUnsupported = errPack.New("err_pagination_total_unsupported")
 	ErrPaginationTotalColumnNotFound = errPack.New("err_pagination_total_column_not_found")
 	ErrInvalidWhereOperator = errPack.New("err_invalid_where_operator")
+	ErrInvalidSearchMode = errPack.New("err_invalid_search_mode")
+	ErrUnsupportedSearchModeForDialect = errPack.New("err_unsupported_search_mode_for_dialect")
+	ErrInvalidFullTextLanguage = errPack.New("err_invalid_full_text_language")
+	ErrInvalidFullTextOperator = errPack.New("err_invalid_full_text_operator")
+	ErrFullTextColumnRequired = errPack.New("err_full_text_column_required")
+	ErrSearchFieldNotAllowed = errPack.New("err_search_field_not_allowed")
+	ErrSearchModeNotAllowedForField = errPack.New("err_search_mode_not_allowed_for_field")
+	ErrFullTextOperatorRequiresFullTextMode = errPack.New("err_full_text_operator_requires_full_text_mode")
 	// error bulk insert
 	// ErrBulkInsertElemNil = errPack.NewError("err_bulk_insert_elem_nil")
 	ErrBulkInsertElemNil = errPack.New("err_bulk_insert_element_nil")
