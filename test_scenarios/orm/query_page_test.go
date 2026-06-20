@@ -32,13 +32,17 @@ type queryPageCall struct {
 }
 
 type queryPageORM struct {
-	total int64
-	rows  []queryPageUser
-	calls []queryPageCall
+	dialect dialect.Dialector
+	total   int64
+	rows    []queryPageUser
+	calls   []queryPageCall
 }
 
 func (o *queryPageORM) Dialect() dialect.Dialector {
-	return dialect.NewPostgres()
+	if o.dialect == nil {
+		return dialect.NewPostgres()
+	}
+	return o.dialect
 }
 
 func (o *queryPageORM) Config() config.Config {
@@ -180,6 +184,357 @@ func TestQueryPageReturnsPageDataAndAppliesAllowedFields(t *testing.T) {
 	if !reflect.DeepEqual(fake.calls[0].Args, wantArgs) ||
 		!reflect.DeepEqual(fake.calls[1].Args, wantArgs) {
 		t.Fatalf("unexpected args: count=%+v data=%+v", fake.calls[0].Args, fake.calls[1].Args)
+	}
+}
+
+func TestSearchModeDefaultAndInvalidMode(t *testing.T) {
+	fake := &queryPageORM{}
+	var users []queryPageUser
+
+	_, err := orm.QueryPage(
+		context.Background(),
+		query.New(fake).Table(queryPageUser{}),
+		&users,
+		queryPageAllowedFields(),
+		orm.QueryOptions{
+			Page:  1,
+			Limit: 20,
+			Search: &orm.SearchQuery{
+				Fields:  []string{"name"},
+				Keyword: "nabila",
+			},
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(fake.calls[0].Query, "name LIKE $1") ||
+		!reflect.DeepEqual(fake.calls[0].Args, []any{"%nabila%"}) {
+		t.Fatalf("default search should be contains, query=%s args=%+v", fake.calls[0].Query, fake.calls[0].Args)
+	}
+
+	fake = &queryPageORM{}
+	_, err = orm.QueryPage(
+		context.Background(),
+		query.New(fake).Table(queryPageUser{}),
+		&users,
+		queryPageAllowedFields(),
+		orm.QueryOptions{
+			Page:  1,
+			Limit: 20,
+			Search: &orm.SearchQuery{
+				Fields:  []string{"name"},
+				Keyword: "nabila",
+				Mode:    orm.SearchMode("invalid"),
+			},
+		},
+	)
+	if !queryPageSameError(err, dictionary.ErrInvalidSearchMode) {
+		t.Fatalf("expected ErrInvalidSearchMode, got %v", err)
+	}
+}
+
+func TestFullTextLanguageAndOperatorSQL(t *testing.T) {
+	lang, err := orm.FullTextLanguage("").SQL()
+	if err != nil || lang != "simple" {
+		t.Fatalf("unexpected default full-text language: lang=%s err=%v", lang, err)
+	}
+
+	lang, err = orm.FullTextEnglish.SQL()
+	if err != nil || lang != "english" {
+		t.Fatalf("unexpected full-text language: lang=%s err=%v", lang, err)
+	}
+
+	_, err = orm.FullTextLanguage("indonesian").SQL()
+	if !queryPageSameError(err, dictionary.ErrInvalidFullTextLanguage) {
+		t.Fatalf("expected ErrInvalidFullTextLanguage, got %v", err)
+	}
+
+	op, err := orm.FullTextOperator("").SQL()
+	if err != nil || op != "@@" {
+		t.Fatalf("unexpected default full-text operator: op=%s err=%v", op, err)
+	}
+
+	op, err = orm.FullTextContainedBy.SQL()
+	if err != nil || op != "<@" {
+		t.Fatalf("unexpected full-text operator: op=%s err=%v", op, err)
+	}
+
+	_, err = orm.FullTextOperator("invalid").SQL()
+	if !queryPageSameError(err, dictionary.ErrInvalidFullTextOperator) {
+		t.Fatalf("expected ErrInvalidFullTextOperator, got %v", err)
+	}
+}
+
+func TestQueryPageWithConfigSearchModes(t *testing.T) {
+	tests := []struct {
+		name      string
+		mode      orm.SearchMode
+		keyword   string
+		config    orm.SearchFieldConfig
+		fragments []string
+		args      []any
+	}{
+		{
+			name:    "contains",
+			mode:    orm.SearchModeContains,
+			keyword: "nabila",
+			config: orm.SearchFieldConfig{
+				Column: "name",
+				Modes:  []orm.SearchMode{orm.SearchModeContains},
+			},
+			fragments: []string{"name LIKE $1"},
+			args:      []any{"%nabila%"},
+		},
+		{
+			name:    "prefix",
+			mode:    orm.SearchModePrefix,
+			keyword: "nab",
+			config: orm.SearchFieldConfig{
+				Column: "name",
+				Modes:  []orm.SearchMode{orm.SearchModePrefix},
+			},
+			fragments: []string{"name LIKE $1"},
+			args:      []any{"nab%"},
+		},
+		{
+			name:    "full text",
+			mode:    orm.SearchModeFullText,
+			keyword: "joko yono",
+			config: orm.SearchFieldConfig{
+				Column:         "name",
+				FullTextColumn: "fts_keyword",
+				Modes:          []orm.SearchMode{orm.SearchModeFullText},
+			},
+			fragments: []string{"fts_keyword @@ to_tsquery('simple', $1)"},
+			args:      []any{"joko & yono"},
+		},
+		{
+			name:    "trigram",
+			mode:    orm.SearchModeTrigram,
+			keyword: "joko",
+			config: orm.SearchFieldConfig{
+				Column: "name",
+				Modes:  []orm.SearchMode{orm.SearchModeTrigram},
+			},
+			fragments: []string{"name ILIKE $1"},
+			args:      []any{"%joko%"},
+		},
+		{
+			name:    "full text trigram two tokens",
+			mode:    orm.SearchModeFullTextTrigram,
+			keyword: "joko y",
+			config: orm.SearchFieldConfig{
+				Column:           "name",
+				FullTextColumn:   "fts_keyword",
+				FullTextLanguage: orm.FullTextEnglish,
+				Modes:            []orm.SearchMode{orm.SearchModeFullTextTrigram},
+			},
+			fragments: []string{"fts_keyword @@ to_tsquery('english', $1)", "name ILIKE $2"},
+			args:      []any{"joko", "%y%"},
+		},
+		{
+			name:    "full text trigram three tokens",
+			mode:    orm.SearchModeFullTextTrigram,
+			keyword: "joko yono wo",
+			config: orm.SearchFieldConfig{
+				Column:         "name",
+				FullTextColumn: "fts_keyword",
+				Modes:          []orm.SearchMode{orm.SearchModeFullTextTrigram},
+			},
+			fragments: []string{"fts_keyword @@ to_tsquery('simple', $1)", "name ILIKE $2"},
+			args:      []any{"joko & yono", "%wo%"},
+		},
+		{
+			name:    "full text trigram one token uses full text only",
+			mode:    orm.SearchModeFullTextTrigram,
+			keyword: "joko",
+			config: orm.SearchFieldConfig{
+				Column:         "name",
+				FullTextColumn: "fts_keyword",
+				Modes:          []orm.SearchMode{orm.SearchModeFullTextTrigram},
+			},
+			fragments: []string{"fts_keyword @@ to_tsquery('simple', $1)"},
+			args:      []any{"joko"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fake := &queryPageORM{}
+			var users []queryPageUser
+
+			_, err := orm.QueryPageWithConfig(
+				context.Background(),
+				query.New(fake).Table(queryPageUser{}),
+				&users,
+				orm.QueryPageConfig{
+					AllowedFields: queryPageAllowedFields(),
+					SearchFields: map[string]orm.SearchFieldConfig{
+						"name": tt.config,
+					},
+				},
+				orm.QueryOptions{
+					Page:  1,
+					Limit: 20,
+					Search: &orm.SearchQuery{
+						Fields:  []string{"name"},
+						Keyword: tt.keyword,
+						Mode:    tt.mode,
+					},
+				},
+			)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			for _, fragment := range tt.fragments {
+				if !strings.Contains(fake.calls[0].Query, fragment) {
+					t.Fatalf("missing fragment %q in %s", fragment, fake.calls[0].Query)
+				}
+			}
+			if !reflect.DeepEqual(fake.calls[0].Args, tt.args) ||
+				!reflect.DeepEqual(fake.calls[1].Args, tt.args) {
+				t.Fatalf("unexpected args: count=%+v data=%+v want=%+v", fake.calls[0].Args, fake.calls[1].Args, tt.args)
+			}
+		})
+	}
+}
+
+func TestQueryPageSearchModeErrors(t *testing.T) {
+	tests := []struct {
+		name    string
+		dialect dialect.Dialector
+		config  orm.SearchFieldConfig
+		mode    orm.SearchMode
+		wantErr error
+	}{
+		{
+			name:    "mysql full text unsupported",
+			dialect: dialect.NewMysql(),
+			config: orm.SearchFieldConfig{
+				Column:         "name",
+				FullTextColumn: "fts_keyword",
+				Modes:          []orm.SearchMode{orm.SearchModeFullText},
+			},
+			mode:    orm.SearchModeFullText,
+			wantErr: dictionary.ErrUnsupportedSearchModeForDialect,
+		},
+		{
+			name:    "oracle trigram unsupported",
+			dialect: dialect.NewOracle(),
+			config: orm.SearchFieldConfig{
+				Column: "name",
+				Modes:  []orm.SearchMode{orm.SearchModeTrigram},
+			},
+			mode:    orm.SearchModeTrigram,
+			wantErr: dictionary.ErrUnsupportedSearchModeForDialect,
+		},
+		{
+			name: "full text column required",
+			config: orm.SearchFieldConfig{
+				Column: "name",
+				Modes:  []orm.SearchMode{orm.SearchModeFullText},
+			},
+			mode:    orm.SearchModeFullText,
+			wantErr: dictionary.ErrFullTextColumnRequired,
+		},
+		{
+			name: "mode not allowed for field",
+			config: orm.SearchFieldConfig{
+				Column: "name",
+				Modes:  []orm.SearchMode{orm.SearchModeContains},
+			},
+			mode:    orm.SearchModePrefix,
+			wantErr: dictionary.ErrSearchModeNotAllowedForField,
+		},
+		{
+			name: "invalid language",
+			config: orm.SearchFieldConfig{
+				Column:           "name",
+				FullTextColumn:   "fts_keyword",
+				FullTextLanguage: orm.FullTextLanguage("invalid"),
+				Modes:            []orm.SearchMode{orm.SearchModeFullText},
+			},
+			mode:    orm.SearchModeFullText,
+			wantErr: dictionary.ErrInvalidFullTextLanguage,
+		},
+		{
+			name: "invalid full text operator",
+			config: orm.SearchFieldConfig{
+				Column:           "name",
+				FullTextColumn:   "fts_keyword",
+				FullTextOperator: orm.FullTextOperator("invalid"),
+				Modes:            []orm.SearchMode{orm.SearchModeFullText},
+			},
+			mode:    orm.SearchModeFullText,
+			wantErr: dictionary.ErrInvalidFullTextOperator,
+		},
+		{
+			name: "full text operator outside full text mode",
+			config: orm.SearchFieldConfig{
+				Column:           "name",
+				FullTextOperator: orm.FullTextMatch,
+				Modes:            []orm.SearchMode{orm.SearchModeTrigram},
+			},
+			mode:    orm.SearchModeTrigram,
+			wantErr: dictionary.ErrFullTextOperatorRequiresFullTextMode,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fake := &queryPageORM{dialect: tt.dialect}
+			var users []queryPageUser
+
+			_, err := orm.QueryPageWithConfig(
+				context.Background(),
+				query.New(fake).Table(queryPageUser{}),
+				&users,
+				orm.QueryPageConfig{
+					AllowedFields: queryPageAllowedFields(),
+					SearchFields: map[string]orm.SearchFieldConfig{
+						"name": tt.config,
+					},
+				},
+				orm.QueryOptions{
+					Page:  1,
+					Limit: 20,
+					Search: &orm.SearchQuery{
+						Fields:  []string{"name"},
+						Keyword: "joko",
+						Mode:    tt.mode,
+					},
+				},
+			)
+			if !queryPageSameError(err, tt.wantErr) {
+				t.Fatalf("expected %v, got %v", tt.wantErr, err)
+			}
+		})
+	}
+}
+
+func TestQueryPageAdvancedModeRequiresSearchFieldConfig(t *testing.T) {
+	fake := &queryPageORM{}
+	var users []queryPageUser
+
+	_, err := orm.QueryPage(
+		context.Background(),
+		query.New(fake).Table(queryPageUser{}),
+		&users,
+		queryPageAllowedFields(),
+		orm.QueryOptions{
+			Page:  1,
+			Limit: 20,
+			Search: &orm.SearchQuery{
+				Fields:  []string{"name"},
+				Keyword: "joko",
+				Mode:    orm.SearchModeFullText,
+			},
+		},
+	)
+	if !queryPageSameError(err, dictionary.ErrSearchFieldNotAllowed) {
+		t.Fatalf("expected ErrSearchFieldNotAllowed, got %v", err)
 	}
 }
 

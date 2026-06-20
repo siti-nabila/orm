@@ -243,3 +243,35 @@ errors:
     code: 4059
     en: "orm: invalid where operator."
     id: "orm: operator where tidak valid."
+  err_invalid_search_mode:
+    code: 4060
+    en: "orm: invalid search mode."
+    id: "orm: mode pencarian tidak valid."
+  err_unsupported_search_mode_for_dialect:
+    code: 4061
+    en: "orm: search mode is not supported for this database dialect."
+    id: "orm: mode pencarian tidak didukung untuk dialek database ini."
+  err_invalid_full_text_language:
+    code: 4062
+    en: "orm: invalid full-text language."
+    id: "orm: bahasa full-text tidak valid."
+  err_invalid_full_text_operator:
+    code: 4063
+    en: "orm: invalid full-text operator."
+    id: "orm: operator full-text tidak valid."
+  err_full_text_column_required:
+    code: 4064
+    en: "orm: full-text column is required for this search mode."
+    id: "orm: kolom full-text wajib untuk mode pencarian ini."
+  err_search_field_not_allowed:
+    code: 4065
+    en: "orm: search field is not allowed."
+    id: "orm: field pencarian tidak diizinkan."
+  err_search_mode_not_allowed_for_field:
+    code: 4066
+    en: "orm: search mode is not allowed for this search field."
+    id: "orm: mode pencarian tidak diizinkan untuk field pencarian ini."
+  err_full_text_operator_requires_full_text_mode:
+    code: 4067
+    en: "orm: full-text operator requires a full-text search mode."
+    id: "orm: operator full-text membutuhkan mode pencarian full-text."
