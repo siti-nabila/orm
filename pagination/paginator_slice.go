@@ -32,10 +32,10 @@ func (c *SlicePaginator[T]) Sort(less func(a, b T) bool) *SlicePaginator[T] {
 	return c
 }
 
-func (c *SlicePaginator[T]) Paginate(params Params) (Result[T], error) {
+func (c *SlicePaginator[T]) Paginate(params Params) (PageData[T], error) {
 	params, err := NormalizeWithConfig(params, c.config)
 	if err != nil {
-		return Result[T]{}, err
+		return EmptyPageData[T](params.Page, params.Limit), err
 	}
 
 	filtered := make([]T, 0, len(c.data))
@@ -52,21 +52,20 @@ func (c *SlicePaginator[T]) Paginate(params Params) (Result[T], error) {
 	}
 
 	total := int64(len(filtered))
+	meta := BuildPageMeta(PaginationOptions{
+		Page:    params.Page,
+		PerPage: params.Limit,
+	}, total)
+
 	start := Offset(params)
 	if start >= len(filtered) {
-		return Result[T]{
-			Data: []T{},
-			Meta: BuildMeta(params, 0, false, &total),
-		}, nil
+		return NewPageData([]T{}, meta), nil
 	}
 
 	end := min(start+params.Limit, len(filtered))
 	data := append([]T(nil), filtered[start:end]...)
 
-	return Result[T]{
-		Data: data,
-		Meta: BuildMeta(params, len(data), end < len(filtered), &total),
-	}, nil
+	return NewPageData(data, meta), nil
 }
 
 func (c *SlicePaginator[T]) matches(item T) bool {

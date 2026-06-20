@@ -58,13 +58,13 @@ func TestNormalizeWithConfig(t *testing.T) {
 	}
 }
 
-func TestBuildPageInfo(t *testing.T) {
+func TestBuildPageMeta(t *testing.T) {
 	tests := []struct {
 		name       string
 		opts       pagination.PaginationOptions
 		cfg        pagination.Config
 		totalRows  int64
-		wantInfo   pagination.PageInfo
+		wantMeta   pagination.PageMeta
 		wantOffset int
 	}{
 		{
@@ -74,9 +74,9 @@ func TestBuildPageInfo(t *testing.T) {
 				PerPage: 0,
 			},
 			totalRows: 0,
-			wantInfo: pagination.PageInfo{
-				Page:    1,
-				PerPage: pagination.DefaultLimit,
+			wantMeta: pagination.PageMeta{
+				Page:  1,
+				Limit: pagination.DefaultLimit,
 			},
 			wantOffset: 0,
 		},
@@ -87,9 +87,9 @@ func TestBuildPageInfo(t *testing.T) {
 				PerPage: 10,
 			},
 			totalRows: 0,
-			wantInfo: pagination.PageInfo{
-				Page:    3,
-				PerPage: 10,
+			wantMeta: pagination.PageMeta{
+				Page:  3,
+				Limit: 10,
 			},
 			wantOffset: 20,
 		},
@@ -100,10 +100,10 @@ func TestBuildPageInfo(t *testing.T) {
 				PerPage: 5,
 			},
 			totalRows: 20,
-			wantInfo: pagination.PageInfo{
+			wantMeta: pagination.PageMeta{
 				Page:       1,
-				PerPage:    5,
-				TotalRows:  20,
+				Limit:      5,
+				Total:      20,
 				TotalPages: 4,
 				HasNext:    true,
 			},
@@ -116,10 +116,10 @@ func TestBuildPageInfo(t *testing.T) {
 				PerPage: 5,
 			},
 			totalRows: 23,
-			wantInfo: pagination.PageInfo{
+			wantMeta: pagination.PageMeta{
 				Page:       2,
-				PerPage:    5,
-				TotalRows:  23,
+				Limit:      5,
+				Total:      23,
 				TotalPages: 5,
 				HasNext:    true,
 				HasPrev:    true,
@@ -133,10 +133,10 @@ func TestBuildPageInfo(t *testing.T) {
 				PerPage: 5,
 			},
 			totalRows: 23,
-			wantInfo: pagination.PageInfo{
+			wantMeta: pagination.PageMeta{
 				Page:       5,
-				PerPage:    5,
-				TotalRows:  23,
+				Limit:      5,
+				Total:      23,
 				TotalPages: 5,
 				HasPrev:    true,
 			},
@@ -149,27 +149,27 @@ func TestBuildPageInfo(t *testing.T) {
 				PerPage: 5,
 			},
 			totalRows: 23,
-			wantInfo: pagination.PageInfo{
+			wantMeta: pagination.PageMeta{
 				Page:       7,
-				PerPage:    5,
-				TotalRows:  23,
+				Limit:      5,
+				Total:      23,
 				TotalPages: 5,
 				HasPrev:    true,
 			},
 			wantOffset: 30,
 		},
 		{
-			name: "max limit caps per page before page info",
+			name: "max limit caps per page before page meta",
 			opts: pagination.PaginationOptions{
 				Page:     2,
 				PerPage:  50,
 				MaxLimit: 20,
 			},
 			totalRows: 45,
-			wantInfo: pagination.PageInfo{
+			wantMeta: pagination.PageMeta{
 				Page:       2,
-				PerPage:    20,
-				TotalRows:  45,
+				Limit:      20,
+				Total:      45,
 				TotalPages: 3,
 				HasNext:    true,
 				HasPrev:    true,
@@ -185,9 +185,9 @@ func TestBuildPageInfo(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			got := pagination.BuildPageInfo(opts, tt.totalRows)
-			if !reflect.DeepEqual(got, tt.wantInfo) {
-				t.Fatalf("unexpected page info: got=%+v want=%+v", got, tt.wantInfo)
+			got := pagination.BuildPageMeta(opts, tt.totalRows)
+			if !reflect.DeepEqual(got, tt.wantMeta) {
+				t.Fatalf("unexpected page meta: got=%+v want=%+v", got, tt.wantMeta)
 			}
 
 			if gotOffset := pagination.OptionsOffset(opts); gotOffset != tt.wantOffset {
@@ -220,14 +220,14 @@ func TestSlicePaginatorPaginate(t *testing.T) {
 	}
 
 	want := []item{{ID: 2, Group: "a"}, {ID: 3, Group: "a"}}
-	if !reflect.DeepEqual(result.Data, want) {
-		t.Fatalf("unexpected page: got=%+v want=%+v", result.Data, want)
+	if !reflect.DeepEqual(result.Items, want) {
+		t.Fatalf("unexpected page: got=%+v want=%+v", result.Items, want)
 	}
-	if result.Meta.TotalItems == nil || *result.Meta.TotalItems != 3 {
-		t.Fatalf("unexpected total: %+v", result.Meta.TotalItems)
+	if result.Total != 3 || result.Page != 1 || result.Limit != 2 || result.TotalPages != 2 {
+		t.Fatalf("unexpected page data: %+v", result)
 	}
-	if !result.Meta.HasNext || result.Meta.HasPrev {
-		t.Fatalf("unexpected meta: %+v", result.Meta)
+	if !result.HasNext || result.HasPrev {
+		t.Fatalf("unexpected page data: %+v", result)
 	}
 	if !reflect.DeepEqual(input, original) {
 		t.Fatalf("input mutated: got=%+v want=%+v", input, original)
@@ -239,11 +239,14 @@ func TestSlicePaginatorOutOfRange(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(result.Data) != 0 {
-		t.Fatalf("expected empty data, got %+v", result.Data)
+	if len(result.Items) != 0 {
+		t.Fatalf("expected empty items, got %+v", result.Items)
 	}
-	if result.Meta.TotalItems == nil || *result.Meta.TotalItems != 2 {
-		t.Fatalf("unexpected meta: %+v", result.Meta)
+	if result.Items == nil {
+		t.Fatal("expected empty items slice, got nil")
+	}
+	if result.Total != 2 || result.TotalPages != 1 || result.HasNext || !result.HasPrev {
+		t.Fatalf("unexpected page data: %+v", result)
 	}
 }
 
@@ -255,8 +258,60 @@ func TestSlicePaginatorWithConfig(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(result.Data) != 2 || result.Meta.Limit != 2 {
+	if len(result.Items) != 2 || result.Limit != 2 {
 		t.Fatalf("unexpected result: %+v", result)
+	}
+}
+
+func TestSlicePaginatorNilInputReturnsEmptyItems(t *testing.T) {
+	result, err := pagination.FromSlice[int](nil).Paginate(pagination.Params{Page: 1, Limit: 20})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Items == nil || len(result.Items) != 0 {
+		t.Fatalf("expected empty items slice, got %+v", result.Items)
+	}
+	if result.Total != 0 || result.TotalPages != 0 || result.HasNext || result.HasPrev {
+		t.Fatalf("unexpected empty result: %+v", result)
+	}
+}
+
+func TestSlicePaginatorLastPageHasPreviousAndNoNext(t *testing.T) {
+	result, err := pagination.FromSlice([]int{1, 2, 3}).Paginate(pagination.Params{Page: 2, Limit: 2})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(result.Items, []int{3}) {
+		t.Fatalf("unexpected items: %+v", result.Items)
+	}
+	if result.Total != 3 || result.TotalPages != 2 || result.HasNext || !result.HasPrev {
+		t.Fatalf("unexpected page data: %+v", result)
+	}
+}
+
+func TestPageDataHelpers(t *testing.T) {
+	meta := pagination.PageMeta{
+		Page:       2,
+		Limit:      20,
+		Total:      55,
+		TotalPages: 3,
+		HasNext:    true,
+		HasPrev:    true,
+	}
+
+	data := pagination.NewPageData[int](nil, meta)
+	if data.Items == nil || len(data.Items) != 0 {
+		t.Fatalf("expected empty items slice, got %+v", data.Items)
+	}
+	if data.Total != 55 || data.Page != 2 || data.Limit != 20 || data.TotalPages != 3 ||
+		!data.HasNext || !data.HasPrev {
+		t.Fatalf("unexpected page data: %+v", data)
+	}
+
+	empty := pagination.EmptyPageData[int](0, 20)
+	if empty.Items == nil || len(empty.Items) != 0 || empty.Page != 1 || empty.Limit != 20 ||
+		empty.Total != 0 || empty.TotalPages != 0 || empty.HasNext || empty.HasPrev {
+		t.Fatalf("unexpected empty page data: %+v", empty)
 	}
 }
 

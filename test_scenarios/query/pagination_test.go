@@ -84,7 +84,7 @@ func TestDryRunPaginateByDialect(t *testing.T) {
 			o := &paginationTestORM{dialect: tt.dialect}
 			result, err := query.New(o).
 				Table(paginationTestUser{}).
-				Where("name = ?", "nabila").
+				Where("name = ?", "joko").
 				OrderBy("id ASC").
 				DryRunPaginate(pagination.Params{Page: 2, Limit: 20})
 			if err != nil {
@@ -153,7 +153,7 @@ func TestDryRunCountByDialect(t *testing.T) {
 				Table(paginationTestUser{}).
 				Join("roles", "roles.user_id = users.id").
 				Where("users.active = ?", true).
-				OrWhere("users.name = ?", "nabila").
+				OrWhere("users.name = ?", "joko").
 				WhereGroup(func(q *query.QueryBuilder) {
 					q.Where("roles.name = ?", "admin").
 						OrWhereIn("roles.id", []int64{1, 2})
@@ -179,7 +179,7 @@ func TestDryRunCountByDialect(t *testing.T) {
 					t.Fatalf("count query should not contain %q: %s", forbidden, result.Query)
 				}
 			}
-			if !reflect.DeepEqual(result.Args, []any{true, "nabila", "admin", int64(1), int64(2)}) {
+			if !reflect.DeepEqual(result.Args, []any{true, "joko", "admin", int64(1), int64(2)}) {
 				t.Fatalf("unexpected count args: %+v", result.Args)
 			}
 			if result.Mode != builder.DryRunModeQueryRow {
@@ -193,7 +193,7 @@ func TestDryRunCountDoesNotMutateDataQueryAndArgsAreIndependent(t *testing.T) {
 	o := &paginationTestORM{dialect: dialect.NewPostgres()}
 	q := query.New(o).
 		Table(paginationTestUser{}).
-		Where("name = ?", "nabila").
+		Where("name = ?", "joko").
 		OrderBy("id ASC").
 		Limit(10).
 		Offset(20)
@@ -215,7 +215,7 @@ func TestDryRunCountDoesNotMutateDataQueryAndArgsAreIndependent(t *testing.T) {
 		!strings.HasSuffix(dataResult.Query, " LIMIT 10 OFFSET 20") {
 		t.Fatalf("data query lost order or pagination: %s", dataResult.Query)
 	}
-	if !reflect.DeepEqual(dataResult.Args, []any{"nabila"}) {
+	if !reflect.DeepEqual(dataResult.Args, []any{"joko"}) {
 		t.Fatalf("data args should be independent from count args: %+v", dataResult.Args)
 	}
 }

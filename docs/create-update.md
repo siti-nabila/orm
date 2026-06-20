@@ -10,8 +10,8 @@ own a `*sql.Tx`.
 tx := orm.NewSqlTransactionAdapter(ctx, sqlTx, dialect.NewPostgres(), config.Config{})
 
 user := User{
-    Name:   "Nabila",
-    Email:  "nabila@example.com",
+    Name:   "joko",
+    Email:  "joko@example.com",
     Status: "ACTIVE",
 }
 
