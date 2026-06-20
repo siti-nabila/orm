@@ -220,14 +220,17 @@ func TestDryRunCountDoesNotMutateDataQueryAndArgsAreIndependent(t *testing.T) {
 	}
 }
 
-func TestDryRunCountRejectsRawSelectExpr(t *testing.T) {
+func TestDryRunCountWrapsRawSelectExpr(t *testing.T) {
 	o := &paginationTestORM{dialect: dialect.NewPostgres()}
-	_, err := query.New(o).
+	result, err := query.New(o).
 		Table(paginationTestUser{}).
 		Select("COUNT(*)").
 		DryRunCount()
-	if !sameError(err, dictionary.ErrPaginationTotalUnsupported) {
-		t.Fatalf("expected ErrPaginationTotalUnsupported, got %v", err)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Query != "SELECT COUNT(*) FROM (SELECT COUNT(*) FROM users) count_table" {
+		t.Fatalf("unexpected count query: %s", result.Query)
 	}
 }
 

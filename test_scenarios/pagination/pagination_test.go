@@ -197,7 +197,7 @@ func TestBuildPageInfo(t *testing.T) {
 	}
 }
 
-func TestCollectionPaginate(t *testing.T) {
+func TestSlicePaginatorPaginate(t *testing.T) {
 	type item struct {
 		ID    int
 		Group string
@@ -234,7 +234,7 @@ func TestCollectionPaginate(t *testing.T) {
 	}
 }
 
-func TestCollectionOutOfRange(t *testing.T) {
+func TestSlicePaginatorOutOfRange(t *testing.T) {
 	result, err := pagination.FromSlice([]int{1, 2}).Paginate(pagination.Params{Page: 3, Limit: 2})
 	if err != nil {
 		t.Fatal(err)
@@ -247,7 +247,7 @@ func TestCollectionOutOfRange(t *testing.T) {
 	}
 }
 
-func TestCollectionWithConfig(t *testing.T) {
+func TestSlicePaginatorWithConfig(t *testing.T) {
 	result, err := pagination.FromSliceWithConfig(
 		[]int{1, 2, 3, 4},
 		pagination.Config{DefaultLimit: 2, MaxLimit: 3},

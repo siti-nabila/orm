@@ -306,20 +306,39 @@ func (b *QueryBuilder) build() (QueryBuilderResult, error) {
 		return QueryBuilderResult{}, dictionary.ErrDBQueryEmpty
 	}
 
+	selectKeyword := "SELECT"
+	if b.distinct {
+		selectKeyword += " DISTINCT"
+	}
+
 	selectQuery := strings.Join(selectParts, ", ")
-	query := fmt.Sprintf("SELECT %s FROM %s", selectQuery, table)
+	query := fmt.Sprintf("%s %s FROM %s", selectKeyword, selectQuery, table)
 
 	for _, j := range b.joins {
 		query += " " + j.Type + " " + j.Table + " ON " + j.On
 	}
 
-	whereQuery, args, _, err := buildConditions(d, mode, b.conditions, 1)
+	whereQuery, args, nextIdx, err := buildConditions(d, mode, b.conditions, 1)
 	if err != nil {
 		return QueryBuilderResult{}, err
 	}
 
 	if whereQuery != "" {
 		query += " WHERE " + whereQuery
+	}
+
+	if len(b.groupBys) > 0 {
+		query += " GROUP BY " + strings.Join(b.groupBys, ", ")
+	}
+
+	havingQuery, havingArgs, _, err := buildConditions(d, mode, b.having, nextIdx)
+	if err != nil {
+		return QueryBuilderResult{}, err
+	}
+
+	if havingQuery != "" {
+		query += " HAVING " + havingQuery
+		args = append(args, havingArgs...)
 	}
 
 	if len(b.orderBys) > 0 {
@@ -350,8 +369,8 @@ func (b *QueryBuilder) buildCount() (QueryBuilderResult, error) {
 		return QueryBuilderResult{}, dictionary.ErrDBQueryEmpty
 	}
 
-	if len(b.selectExprs) > 0 {
-		return QueryBuilderResult{}, dictionary.ErrPaginationTotalUnsupported
+	if b.needsWrappedCount() {
+		return b.buildWrappedCount()
 	}
 
 	cfg := b.orm.Config()
@@ -386,6 +405,29 @@ func (b *QueryBuilder) buildCount() (QueryBuilderResult, error) {
 	return QueryBuilderResult{
 		Query: query,
 		Args:  args,
+		Mode:  builder.DryRunModeQueryRow,
+	}, nil
+}
+
+func (b *QueryBuilder) needsWrappedCount() bool {
+	return b.distinct || len(b.groupBys) > 0 || len(b.having) > 0 || len(b.selectExprs) > 0
+}
+
+func (b *QueryBuilder) buildWrappedCount() (QueryBuilderResult, error) {
+	countBuilder := b.clone()
+	countBuilder.orderBys = nil
+	countBuilder.limit = nil
+	countBuilder.offset = nil
+	countBuilder.singleRow = false
+
+	res, err := countBuilder.build()
+	if err != nil {
+		return QueryBuilderResult{}, err
+	}
+
+	return QueryBuilderResult{
+		Query: dialect.BuildCountWrapperQuery(b.orm.Dialect(), res.Query),
+		Args:  res.Args,
 		Mode:  builder.DryRunModeQueryRow,
 	}, nil
 }

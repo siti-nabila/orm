@@ -238,6 +238,57 @@ func TestScanPaginateExecutesCountThenDataAndScansSlice(t *testing.T) {
 	}
 }
 
+func TestScanPaginateUsesWrappedCountForComplexQuery(t *testing.T) {
+	state := &scanPaginateTestState{
+		totalRows: 1,
+		dataCols:  []string{"name"},
+		dataRows: [][]driver.Value{
+			{"one"},
+		},
+	}
+	conn := openScanPaginateDB(t, state)
+	db := orm.NewSqlQueryAdapter(context.Background(), conn, dialect.NewPostgres(), config.Config{})
+
+	var users []scanPaginateUser
+	pageInfo, err := db.UseModel(scanPaginateUser{}).
+		Select("name").
+		Distinct().
+		OrderBy("name ASC").
+		ScanPaginate(context.Background(), &users, orm.PaginationOptions{
+			Page:    1,
+			PerPage: 10,
+		})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !reflect.DeepEqual(users, []scanPaginateUser{{Name: "one"}}) {
+		t.Fatalf("unexpected users: %+v", users)
+	}
+	if pageInfo.TotalRows != 1 || pageInfo.TotalPages != 1 {
+		t.Fatalf("unexpected page info: %+v", pageInfo)
+	}
+
+	queries := state.snapshotQueries()
+	if len(queries) != 2 {
+		t.Fatalf("expected count and data query, got %+v", queries)
+	}
+	if !strings.HasPrefix(queries[0].Query, "SELECT COUNT(*) FROM (SELECT DISTINCT name FROM users)") ||
+		!strings.HasSuffix(queries[0].Query, " count_table") {
+		t.Fatalf("unexpected wrapped count query: %s", queries[0].Query)
+	}
+	for _, forbidden := range []string{"ORDER BY", "LIMIT", "OFFSET"} {
+		if strings.Contains(queries[0].Query, forbidden) {
+			t.Fatalf("count query should not contain %q: %s", forbidden, queries[0].Query)
+		}
+	}
+	if !strings.HasPrefix(queries[1].Query, "SELECT DISTINCT name FROM users") ||
+		!strings.Contains(queries[1].Query, "ORDER BY name ASC") ||
+		!strings.HasSuffix(queries[1].Query, " LIMIT 10 OFFSET 0") {
+		t.Fatalf("unexpected data query: %s", queries[1].Query)
+	}
+}
+
 func TestScanPaginateSecondPageHasPrevAndNextWithExampleUserData(t *testing.T) {
 	state := &scanPaginateTestState{
 		totalRows: 23,

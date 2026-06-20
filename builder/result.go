@@ -36,6 +36,10 @@ type (
 		Args  []any
 		Mode  DryRunMode
 	}
+	ScanPaginateDryRunResult struct {
+		Count DryRunResult
+		Data  DryRunResult
+	}
 	InsertAdvancedQueryResult struct {
 		Query              string
 		Args               []any
