@@ -18,7 +18,7 @@ type (
 	}
 
 	QueryPageConfig struct {
-		// AllowedFields returns the allowed frontend-to-database field mapping.
+		// AllowedFields is the allowed frontend-to-database field mapping.
 		//
 		// The map key is the JSON/request field name used by the frontend.
 		// The map value is the actual database column name used by the query builder.
