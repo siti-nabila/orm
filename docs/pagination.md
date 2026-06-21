@@ -309,6 +309,8 @@ Advanced search modes use `QueryPageWithConfig`:
 ```go
 type QueryPageConfig struct {
     // AllowedFields maps frontend JSON/request fields to database columns.
+    // The map key is the JSON/request field name used by the frontend.
+    // The map value is the actual database column name used by the query builder.
     AllowedFields map[string]string
     SearchFields  map[string]SearchFieldConfig
 }
