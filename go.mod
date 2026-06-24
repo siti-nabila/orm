@@ -7,6 +7,7 @@ require (
 	// github.com/godev90/validator v0.1.17
 	github.com/siti-nabila/error-package v0.0.8
 	github.com/lib/pq v1.12.3
+	google.golang.org/protobuf v1.36.10
 )
 
 require (

@@ -1,0 +1,64 @@
+syntax = "proto3";
+
+package orm.v1;
+
+option go_package = "github.com/siti-nabila/orm/pb;ormpb";
+
+message QueryOptions {
+  uint32 page = 1;
+  uint32 limit = 2;
+
+  repeated string select = 3;
+  repeated SortField sort = 4;
+  SearchQuery search = 5;
+  SearchQueryAnd search_and = 6;
+  repeated Filter filters = 7;
+}
+
+message SortField {
+  string field = 1;
+  bool desc = 2;
+}
+
+message SearchQuery {
+  repeated string fields = 1;
+  string keyword = 2;
+  SearchMode mode = 3;
+}
+
+enum SearchMode {
+  SEARCH_MODE_UNSPECIFIED = 0;
+  SEARCH_MODE_CONTAINS = 1;
+  SEARCH_MODE_PREFIX = 2;
+  SEARCH_MODE_FULL_TEXT = 3;
+  SEARCH_MODE_TRIGRAM = 4;
+  SEARCH_MODE_FULL_TEXT_TRIGRAM = 5;
+}
+
+message SearchField {
+  string field = 1;
+  string keyword = 2;
+}
+
+message SearchQueryAnd {
+  repeated SearchField fields = 1;
+}
+
+message Filter {
+  string field = 1;
+  FilterOperator operator = 2;
+  string value = 3;
+  repeated string values = 4;
+}
+
+enum FilterOperator {
+  FILTER_OPERATOR_UNSPECIFIED = 0;
+  FILTER_OPERATOR_EQUAL = 1;
+  FILTER_OPERATOR_NOT_EQUAL = 2;
+  FILTER_OPERATOR_GREATER_THAN = 3;
+  FILTER_OPERATOR_GREATER_THAN_EQUAL = 4;
+  FILTER_OPERATOR_LESS_THAN = 5;
+  FILTER_OPERATOR_LESS_THAN_EQUAL = 6;
+  FILTER_OPERATOR_LIKE = 7;
+  FILTER_OPERATOR_NOT_LIKE = 8;
+}
