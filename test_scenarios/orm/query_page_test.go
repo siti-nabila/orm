@@ -306,8 +306,8 @@ func TestQueryPageWithConfigSearchModes(t *testing.T) {
 				FullTextColumn: "fts_keyword",
 				Modes:          []orm.SearchMode{orm.SearchModeFullText},
 			},
-			fragments: []string{"fts_keyword @@ to_tsquery('simple', $1)"},
-			args:      []any{"joko & yono"},
+			fragments: []string{"fts_keyword @@ websearch_to_tsquery('simple', $1)"},
+			args:      []any{"joko yono"},
 		},
 		{
 			name:    "trigram",
@@ -330,7 +330,7 @@ func TestQueryPageWithConfigSearchModes(t *testing.T) {
 				FullTextLanguage: orm.FullTextEnglish,
 				Modes:            []orm.SearchMode{orm.SearchModeFullTextTrigram},
 			},
-			fragments: []string{"fts_keyword @@ to_tsquery('english', $1)", "name ILIKE $2"},
+			fragments: []string{"fts_keyword @@ websearch_to_tsquery('english', $1)", "name ILIKE $2"},
 			args:      []any{"joko", "%y%"},
 		},
 		{
@@ -342,8 +342,8 @@ func TestQueryPageWithConfigSearchModes(t *testing.T) {
 				FullTextColumn: "fts_keyword",
 				Modes:          []orm.SearchMode{orm.SearchModeFullTextTrigram},
 			},
-			fragments: []string{"fts_keyword @@ to_tsquery('simple', $1)", "name ILIKE $2"},
-			args:      []any{"joko & yono", "%wo%"},
+			fragments: []string{"fts_keyword @@ websearch_to_tsquery('simple', $1)", "name ILIKE $2"},
+			args:      []any{"joko yono", "%wo%"},
 		},
 		{
 			name:    "full text trigram one token uses full text only",
@@ -354,7 +354,7 @@ func TestQueryPageWithConfigSearchModes(t *testing.T) {
 				FullTextColumn: "fts_keyword",
 				Modes:          []orm.SearchMode{orm.SearchModeFullTextTrigram},
 			},
-			fragments: []string{"fts_keyword @@ to_tsquery('simple', $1)"},
+			fragments: []string{"fts_keyword @@ websearch_to_tsquery('simple', $1)"},
 			args:      []any{"joko"},
 		},
 	}

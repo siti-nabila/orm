@@ -1,6 +1,9 @@
 package orm
 
-import "github.com/siti-nabila/orm/pkg/dictionary"
+import (
+	"github.com/siti-nabila/orm/dialect"
+	"github.com/siti-nabila/orm/pkg/dictionary"
+)
 
 type (
 	SearchMode string
@@ -59,8 +62,8 @@ const (
 )
 
 var fullTextLanguageSQL = map[FullTextLanguage]string{
-	FullTextSimple:  "simple",
-	FullTextEnglish: "english",
+	FullTextSimple:  dialect.FullTextLanguageSimple,
+	FullTextEnglish: dialect.FullTextLanguageEnglish,
 }
 
 var fullTextOperatorSQL = map[FullTextOperator]string{

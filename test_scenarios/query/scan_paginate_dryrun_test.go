@@ -14,6 +14,19 @@ import (
 	"github.com/siti-nabila/orm/query"
 )
 
+type profileSearchRow struct {
+	AuthID    int64  `sql:"column:auth_id"`
+	Email     string `sql:"column:email"`
+	ProfileID int64  `sql:"column:profile_id"`
+	Name      string `sql:"column:name"`
+	Address   string `sql:"column:address"`
+	Phone     string `sql:"column:phone"`
+}
+
+func (profileSearchRow) TableName() string {
+	return "profile p"
+}
+
 func TestDryRunScanPaginateSimpleQueryByDialect(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -153,6 +166,95 @@ func TestDryRunScanPaginateFiltersJoinOrderAndPlaceholdersByDialect(t *testing.T
 			}
 			if !reflect.DeepEqual(result.Data.Args, wantArgs) {
 				t.Fatalf("unexpected data args: %+v", result.Data.Args)
+			}
+		})
+	}
+}
+
+func TestDryRunScanPaginatePostgresFullTextProfileSearch(t *testing.T) {
+	o := &paginationTestORM{dialect: dialect.NewPostgres()}
+
+	q, err := query.New(o).
+		Table(profileSearchRow{}).
+		Select(
+			"a.id AS auth_id",
+			"a.email",
+			"p.id AS profile_id",
+			"p.\"name\"",
+			"p.address",
+			"p.phone",
+		).
+		Join("auth a", "a.id = p.user_id").
+		Join("user_profile_search ups", "ups.profile_id = p.id").
+		WhereFullText("ups.fts_keyword", "nabila@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := q.
+		OrderBy("p.id DESC").
+		DryRunScanPaginate(pagination.PaginationOptions{
+			Page:    2,
+			PerPage: 10,
+		})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, fragment := range []string{
+		"JOIN auth a ON a.id = p.user_id",
+		"JOIN user_profile_search ups ON ups.profile_id = p.id",
+		"ups.fts_keyword @@ websearch_to_tsquery('simple', $1)",
+	} {
+		if !strings.Contains(result.Count.Query, fragment) {
+			t.Fatalf("missing count fragment %q in %s", fragment, result.Count.Query)
+		}
+		if !strings.Contains(result.Data.Query, fragment) {
+			t.Fatalf("missing data fragment %q in %s", fragment, result.Data.Query)
+		}
+	}
+	if !strings.HasPrefix(result.Count.Query, "SELECT COUNT(*) FROM (SELECT ") ||
+		!strings.HasSuffix(result.Count.Query, ") count_table") {
+		t.Fatalf("unexpected count query shape: %s", result.Count.Query)
+	}
+	for _, forbidden := range []string{"ORDER BY", "LIMIT", "OFFSET"} {
+		if strings.Contains(result.Count.Query, forbidden) {
+			t.Fatalf("count query should not contain %q: %s", forbidden, result.Count.Query)
+		}
+	}
+	if !strings.Contains(result.Data.Query, "ORDER BY p.id DESC") ||
+		!strings.HasSuffix(result.Data.Query, " LIMIT 10 OFFSET 10") {
+		t.Fatalf("unexpected data query: %s", result.Data.Query)
+	}
+
+	wantArgs := []any{"nabila@example.com"}
+	if !reflect.DeepEqual(result.Count.Args, wantArgs) ||
+		!reflect.DeepEqual(result.Data.Args, wantArgs) {
+		t.Fatalf("unexpected args: count=%+v data=%+v", result.Count.Args, result.Data.Args)
+	}
+	if result.Count.Mode != builder.DryRunModeQueryRow ||
+		result.Data.Mode != builder.DryRunModeQuery {
+		t.Fatalf("unexpected dry run modes: count=%s data=%s", result.Count.Mode, result.Data.Mode)
+	}
+}
+
+func TestWhereFullTextRejectsUnsupportedDialects(t *testing.T) {
+	tests := []struct {
+		name    string
+		dialect dialect.Dialector
+	}{
+		{name: "mysql", dialect: dialect.NewMysql()},
+		{name: "oracle", dialect: dialect.NewOracle()},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			o := &paginationTestORM{dialect: tt.dialect}
+			_, err := query.New(o).
+				Table(profileSearchRow{}).
+				WhereFullText("ups.fts_keyword", "nabila")
+			if !sameError(err, dictionary.ErrUnsupportedSearchModeForDialect) {
+				t.Fatalf("expected ErrUnsupportedSearchModeForDialect, got %v", err)
 			}
 		})
 	}
