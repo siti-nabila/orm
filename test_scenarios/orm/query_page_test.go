@@ -26,6 +26,19 @@ func (queryPageUser) TableName() string {
 	return "users"
 }
 
+type queryPageProfileSearchRow struct {
+	AuthID    int64  `sql:"column:auth_id"`
+	Email     string `sql:"column:email"`
+	ProfileID int64  `sql:"column:profile_id"`
+	Name      string `sql:"column:name"`
+	Address   string `sql:"column:address"`
+	Phone     string `sql:"column:phone"`
+}
+
+func (queryPageProfileSearchRow) TableName() string {
+	return "profile p"
+}
+
 type queryPageCall struct {
 	Query string
 	Args  []any
@@ -34,7 +47,7 @@ type queryPageCall struct {
 type queryPageORM struct {
 	dialect dialect.Dialector
 	total   int64
-	rows    []queryPageUser
+	rows    any
 	calls   []queryPageCall
 }
 
@@ -71,8 +84,8 @@ func (o *queryPageORM) ScanQuery(
 	}
 
 	rv := reflect.ValueOf(dest)
-	if rv.Kind() == reflect.Pointer && rv.Elem().Kind() == reflect.Slice {
-		rv.Elem().Set(reflect.ValueOf(append([]queryPageUser(nil), o.rows...)))
+	if rv.Kind() == reflect.Pointer && rv.Elem().Kind() == reflect.Slice && o.rows != nil {
+		rv.Elem().Set(reflect.ValueOf(o.rows))
 	}
 	return nil
 }
@@ -323,39 +336,48 @@ func TestQueryPageWithConfigSearchModes(t *testing.T) {
 		{
 			name:    "full text trigram two tokens",
 			mode:    orm.SearchModeFullTextTrigram,
-			keyword: "joko y",
+			keyword: "siti nab",
 			config: orm.SearchFieldConfig{
-				Column:           "name",
+				Column:           "fts_lexeme_text",
 				FullTextColumn:   "fts_keyword",
 				FullTextLanguage: orm.FullTextEnglish,
 				Modes:            []orm.SearchMode{orm.SearchModeFullTextTrigram},
 			},
-			fragments: []string{"fts_keyword @@ websearch_to_tsquery('english', $1)", "name ILIKE $2"},
-			args:      []any{"joko", "%y%"},
+			fragments: []string{
+				"fts_keyword @@ to_tsquery('english', $1)",
+				"fts_lexeme_text ILIKE '%' || lower($2) || '%'",
+			},
+			args: []any{"siti:* & nab:*", "siti nab"},
 		},
 		{
 			name:    "full text trigram three tokens",
 			mode:    orm.SearchModeFullTextTrigram,
 			keyword: "joko yono wo",
 			config: orm.SearchFieldConfig{
-				Column:         "name",
+				Column:         "fts_lexeme_text",
 				FullTextColumn: "fts_keyword",
 				Modes:          []orm.SearchMode{orm.SearchModeFullTextTrigram},
 			},
-			fragments: []string{"fts_keyword @@ websearch_to_tsquery('simple', $1)", "name ILIKE $2"},
-			args:      []any{"joko yono", "%wo%"},
+			fragments: []string{
+				"fts_keyword @@ to_tsquery('simple', $1)",
+				"fts_lexeme_text ILIKE '%' || lower($2) || '%'",
+			},
+			args: []any{"joko:* & yono:* & wo:*", "joko yono wo"},
 		},
 		{
-			name:    "full text trigram one token uses full text only",
+			name:    "full text trigram one token uses prefix and contains",
 			mode:    orm.SearchModeFullTextTrigram,
-			keyword: "joko",
+			keyword: "nab",
 			config: orm.SearchFieldConfig{
-				Column:         "name",
+				Column:         "fts_lexeme_text",
 				FullTextColumn: "fts_keyword",
 				Modes:          []orm.SearchMode{orm.SearchModeFullTextTrigram},
 			},
-			fragments: []string{"fts_keyword @@ websearch_to_tsquery('simple', $1)"},
-			args:      []any{"joko"},
+			fragments: []string{
+				"fts_keyword @@ to_tsquery('simple', $1)",
+				"fts_lexeme_text ILIKE '%' || lower($2) || '%'",
+			},
+			args: []any{"nab:*", "nab"},
 		},
 	}
 
@@ -398,6 +420,97 @@ func TestQueryPageWithConfigSearchModes(t *testing.T) {
 				t.Fatalf("unexpected args: count=%+v data=%+v want=%+v", fake.calls[0].Args, fake.calls[1].Args, tt.args)
 			}
 		})
+	}
+}
+
+func TestQueryPageFullTextTrigramProfileSearchUsesPrefixAndLexemeContains(t *testing.T) {
+	fake := &queryPageORM{
+		total: 1,
+		rows: []queryPageProfileSearchRow{
+			{
+				AuthID:    10,
+				Email:     "nabila@example.com",
+				ProfileID: 20,
+				Name:      "siti nabila",
+				Address:   "Jakarta",
+				Phone:     "08123",
+			},
+		},
+	}
+	var rows []queryPageProfileSearchRow
+
+	pageData, err := orm.QueryPageWithConfig(
+		context.Background(),
+		query.New(fake).
+			Table(queryPageProfileSearchRow{}).
+			Select(
+				"a.id AS auth_id",
+				"a.email",
+				"p.id AS profile_id",
+				"p.\"name\"",
+				"p.address",
+				"p.phone",
+			).
+			Join("auth a", "a.id = p.user_id").
+			Join("user_profile_search ups", "ups.profile_id = p.id"),
+		&rows,
+		orm.QueryPageConfig{
+			AllowedFields: map[string]string{
+				"profileID": "p.id",
+			},
+			SearchFields: map[string]orm.SearchFieldConfig{
+				"keyword": {
+					Column:         "ups.fts_lexeme_text",
+					FullTextColumn: "ups.fts_keyword",
+					Modes:          []orm.SearchMode{orm.SearchModeFullTextTrigram},
+				},
+			},
+		},
+		orm.QueryOptions{
+			Page:  1,
+			Limit: 10,
+			Search: &orm.SearchQuery{
+				Fields:  []string{"keyword"},
+				Keyword: "siti nab",
+				Mode:    orm.SearchModeFullTextTrigram,
+			},
+			Sort: []orm.SortField{{Field: "profileID", Desc: true}},
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(pageData.Items, fake.rows) {
+		t.Fatalf("unexpected items: got=%+v want=%+v", pageData.Items, fake.rows)
+	}
+	if len(fake.calls) != 2 {
+		t.Fatalf("expected count and data query, got %+v", fake.calls)
+	}
+
+	for _, call := range fake.calls {
+		for _, fragment := range []string{
+			"JOIN auth a ON a.id = p.user_id",
+			"JOIN user_profile_search ups ON ups.profile_id = p.id",
+			"ups.fts_keyword @@ to_tsquery('simple', $1)",
+			"ups.fts_lexeme_text ILIKE '%' || lower($2) || '%'",
+		} {
+			if !strings.Contains(call.Query, fragment) {
+				t.Fatalf("missing query fragment %q in %s", fragment, call.Query)
+			}
+		}
+		if !reflect.DeepEqual(call.Args, []any{"siti:* & nab:*", "siti nab"}) {
+			t.Fatalf("unexpected args: %+v", call.Args)
+		}
+	}
+
+	if strings.Contains(fake.calls[0].Query, "ORDER BY") ||
+		strings.Contains(fake.calls[0].Query, "LIMIT") ||
+		strings.Contains(fake.calls[0].Query, "OFFSET") {
+		t.Fatalf("count query should not contain order or pagination: %s", fake.calls[0].Query)
+	}
+	if !strings.Contains(fake.calls[1].Query, "ORDER BY p.id DESC") ||
+		!strings.HasSuffix(fake.calls[1].Query, " LIMIT 10 OFFSET 0") {
+		t.Fatalf("unexpected data query: %s", fake.calls[1].Query)
 	}
 }
 

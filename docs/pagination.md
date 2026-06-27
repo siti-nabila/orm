@@ -200,6 +200,84 @@ ON user_profile_search
 USING GIN (fts_keyword);
 ```
 
+For `QueryPageWithConfig`, `SearchModeFullTextTrigram` can combine PostgreSQL
+full-text prefix search with contains search over a text column generated from
+the `tsvector` lexemes. In this mode:
+
+- `FullTextColumn` is the `tsvector` column, for example `ups.fts_keyword`.
+- `Column` is the lexeme text column, for example `ups.fts_lexeme_text`.
+
+```go
+pageData, err := orm.QueryPageWithConfig(
+    ctx,
+    db.UseModel(ProfileSearchRow{}).
+        Select(
+            "a.id AS auth_id",
+            "a.email",
+            "p.id AS profile_id",
+            "p.\"name\"",
+            "p.address",
+            "p.phone",
+        ).
+        Join("auth a", "a.id = p.user_id").
+        Join("user_profile_search ups", "ups.profile_id = p.id"),
+    &rows,
+    orm.QueryPageConfig{
+        AllowedFields: map[string]string{
+            "profileID": "p.id",
+        },
+        SearchFields: map[string]orm.SearchFieldConfig{
+            "keyword": {
+                Column:         "ups.fts_lexeme_text",
+                FullTextColumn: "ups.fts_keyword",
+                Modes:          []orm.SearchMode{orm.SearchModeFullTextTrigram},
+            },
+        },
+    },
+    orm.QueryOptions{
+        Page:  1,
+        Limit: 20,
+        Search: &orm.SearchQuery{
+            Fields:  []string{"keyword"},
+            Keyword: "siti nab",
+            Mode:    orm.SearchModeFullTextTrigram,
+        },
+        Sort: []orm.SortField{{Field: "profileID", Desc: true}},
+    },
+)
+```
+
+The generated PostgreSQL condition is equivalent to:
+
+```sql
+ups.fts_keyword @@ to_tsquery('simple', $1)
+OR ups.fts_lexeme_text ILIKE '%' || lower($2) || '%'
+```
+
+The ORM converts the normal user keyword into safe args:
+
+```go
+[]any{"siti:* & nab:*", "siti nab"}
+```
+
+`user_profile_search.fts_lexeme_text` is a text column generated from the
+`fts_keyword` lexemes, for example with
+`array_to_string(tsvector_to_array(fts_keyword), ' ')`.
+
+Recommended indexes:
+
+```sql
+CREATE INDEX idx_user_profile_search_fts_keyword
+ON user_profile_search
+USING GIN (fts_keyword);
+
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+CREATE INDEX idx_user_profile_search_fts_lexeme_text_trgm
+ON user_profile_search
+USING GIN (fts_lexeme_text gin_trgm_ops);
+```
+
 ## QueryPage
 
 `QueryPage` is a high-level helper for frontend-driven pagination. Users still
@@ -362,7 +440,7 @@ The optimized modes are PostgreSQL-only in this phase:
 
 - `SearchModeFullText` uses a configured `tsvector` column with `websearch_to_tsquery`.
 - `SearchModeTrigram` uses `ILIKE ?` on the configured source column and assumes the application owner may create a `pg_trgm` index.
-- `SearchModeFullTextTrigram` uses full-text search for completed tokens and `ILIKE ?` for the final partial token.
+- `SearchModeFullTextTrigram` uses a `tsvector` column for prefix full-text search and a lexeme text column for contains search.
 
 MySQL and Oracle support only `contains` and `prefix` in this phase. Asking for
 `full_text`, `trigram`, or `full_text_trigram` on MySQL or Oracle returns a
@@ -448,27 +526,29 @@ const (
 or `@>` to normal `WhereOp` usage. Empty operator defaults to
 `FullTextMatch`.
 
-For `SearchModeFullTextTrigram`, the keyword is split by whitespace. With:
+For `SearchModeFullTextTrigram`, the keyword is split by whitespace. Each token
+receives a PostgreSQL prefix suffix for the full-text argument. With:
 
 ```text
 joko yono wo
 ```
 
-the completed full-text tokens become:
+the full-text prefix argument becomes:
 
 ```go
-"joko yono"
+"joko:* & yono:* & wo:*"
 ```
 
-and the partial token becomes:
+and the contains argument becomes:
 
 ```go
-"%wo%"
+"joko yono wo"
 ```
 
-If the keyword has one token, the hybrid mode uses full-text search only.
-Ranking with `ts_rank` or `ts_rank_cd`, similarity ordering, and public
-ranking/similarity fields are out of scope for this phase.
+The generated condition uses `to_tsquery` for the prefix part and `ILIKE` for
+the lexeme text contains part. Ranking with `ts_rank` or `ts_rank_cd`,
+similarity ordering, and public ranking/similarity fields are out of scope for
+this phase.
 
 The ORM does not create PostgreSQL extensions or indexes. Application owners
 should add migrations when using optimized search.
