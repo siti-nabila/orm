@@ -304,7 +304,7 @@ func buildSearchCondition(field resolvedSearchField, keyword string, mode Search
 	case SearchModePrefix:
 		return field.Column + " LIKE ?", []any{keyword + "%"}
 	case SearchModeFullText:
-		return fullTextCondition(field), []any{buildFullTextQuery(keyword)}
+		return fullTextCondition(field), []any{keyword}
 	case SearchModeTrigram:
 		return field.Column + " ILIKE ?", []any{"%" + keyword + "%"}
 	case SearchModeFullTextTrigram:
@@ -316,7 +316,7 @@ func buildSearchCondition(field resolvedSearchField, keyword string, mode Search
 
 func fullTextCondition(field resolvedSearchField) string {
 	return fmt.Sprintf(
-		"%s %s to_tsquery('%s', ?)",
+		"%s %s websearch_to_tsquery('%s', ?)",
 		field.FullTextColumn,
 		field.FullTextOperator,
 		field.FullTextLanguage,
@@ -326,22 +326,14 @@ func fullTextCondition(field resolvedSearchField) string {
 func buildFullTextTrigramCondition(field resolvedSearchField, keyword string) (string, []any) {
 	tokens := strings.Fields(keyword)
 	if len(tokens) <= 1 {
-		return fullTextCondition(field), []any{buildFullTextQuery(keyword)}
+		return fullTextCondition(field), []any{keyword}
 	}
 
-	fullTextTokens := strings.Join(tokens[:len(tokens)-1], " & ")
+	fullTextTokens := strings.Join(tokens[:len(tokens)-1], " ")
 	partialToken := tokens[len(tokens)-1]
 
 	return fullTextCondition(field) + " AND " + field.Column + " ILIKE ?",
 		[]any{fullTextTokens, "%" + partialToken + "%"}
-}
-
-func buildFullTextQuery(keyword string) string {
-	tokens := strings.Fields(keyword)
-	if len(tokens) == 0 {
-		return keyword
-	}
-	return strings.Join(tokens, " & ")
 }
 
 func isPortableSearchMode(mode SearchMode) bool {

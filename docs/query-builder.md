@@ -91,6 +91,31 @@ Available operators:
 `Where` is still supported and is not deprecated. Prefer `WhereOp` when you
 want typed operator constants.
 
+## PostgreSQL Full Text Where
+
+`WhereFullText` and `OrWhereFullText` add a PostgreSQL-only full text search
+condition for a `tsvector` column:
+
+```go
+builder, err := db.UseModel(Profile{}).
+    Join("user_profile_search ups", "ups.profile_id = profiles.id").
+    WhereFullText("ups.fts_keyword", keyword)
+if err != nil {
+    return err
+}
+```
+
+The generated condition is:
+
+```sql
+ups.fts_keyword @@ websearch_to_tsquery('simple', ?)
+```
+
+Placeholders are rebound by dialect, so PostgreSQL DryRun output uses `$1`.
+MySQL and Oracle return `ErrUnsupportedSearchModeForDialect` for this helper.
+Use `WhereOp` only for normal comparison operators; full text search is not
+represented as `=`, `<`, `LIKE`, or `IN`.
+
 ## In Lists
 
 ```go

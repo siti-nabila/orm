@@ -136,6 +136,70 @@ behavior.
 it maps `orm.Operator` constants such as `orm.OpEqual` and
 `orm.OpGreaterThanEqual` to SQL internally.
 
+### PostgreSQL Full Text Profile Search
+
+For PostgreSQL `tsvector` search columns, use `WhereFullText` instead of a
+generic comparison operator. The helper emits:
+
+```sql
+<column> @@ websearch_to_tsquery('simple', <arg>)
+```
+
+Example with profile/auth data and a trigger-maintained search table:
+
+```go
+type ProfileSearchRow struct {
+    AuthID    int64  `sql:"column:auth_id"`
+    Email     string `sql:"column:email"`
+    ProfileID int64  `sql:"column:profile_id"`
+    Name      string `sql:"column:name"`
+    Address   string `sql:"column:address"`
+    Phone     string `sql:"column:phone"`
+}
+
+func (ProfileSearchRow) TableName() string {
+    return "profile p"
+}
+
+var rows []ProfileSearchRow
+
+builder, err := db.UseModel(ProfileSearchRow{}).
+    Select(
+        "a.id AS auth_id",
+        "a.email",
+        "p.id AS profile_id",
+        "p.\"name\"",
+        "p.address",
+        "p.phone",
+    ).
+    Join("auth a", "a.id = p.user_id").
+    Join("user_profile_search ups", "ups.profile_id = p.id").
+    WhereFullText("ups.fts_keyword", keyword)
+if err != nil {
+    return err
+}
+
+pageMeta, err := builder.
+    OrderBy("p.id DESC").
+    ScanPaginate(ctx, &rows, orm.PaginationOptions{
+        Page:    1,
+        PerPage: 20,
+    })
+```
+
+`user_profile_search.fts_keyword` is a PostgreSQL `tsvector` column maintained
+by a database trigger, for example from `auth.email`, `profile."name"`, and
+`profile.phone`. The paginator count query uses the same joins and full text
+condition as the data query, so `TotalRows` matches the filtered result.
+
+Add a GIN index for the search column:
+
+```sql
+CREATE INDEX idx_user_profile_search_fts_keyword
+ON user_profile_search
+USING GIN (fts_keyword);
+```
+
 ## QueryPage
 
 `QueryPage` is a high-level helper for frontend-driven pagination. Users still
@@ -296,7 +360,7 @@ and index support prefix matching.
 
 The optimized modes are PostgreSQL-only in this phase:
 
-- `SearchModeFullText` uses a configured `tsvector` column.
+- `SearchModeFullText` uses a configured `tsvector` column with `websearch_to_tsquery`.
 - `SearchModeTrigram` uses `ILIKE ?` on the configured source column and assumes the application owner may create a `pg_trgm` index.
 - `SearchModeFullTextTrigram` uses full-text search for completed tokens and `ILIKE ?` for the final partial token.
 
@@ -393,7 +457,7 @@ joko yono wo
 the completed full-text tokens become:
 
 ```go
-"joko & yono"
+"joko yono"
 ```
 
 and the partial token becomes:
