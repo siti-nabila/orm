@@ -324,16 +324,33 @@ func fullTextCondition(field resolvedSearchField) string {
 }
 
 func buildFullTextTrigramCondition(field resolvedSearchField, keyword string) (string, []any) {
+	return fmt.Sprintf(
+			"%s @@ to_tsquery('%s', ?) OR %s ILIKE '%%' || lower(?) || '%%'",
+			field.FullTextColumn,
+			field.FullTextLanguage,
+			field.Column,
+		),
+		[]any{buildFullTextPrefixQuery(keyword), normalizeSearchKeyword(keyword)}
+}
+
+func buildFullTextPrefixQuery(keyword string) string {
 	tokens := strings.Fields(keyword)
-	if len(tokens) <= 1 {
-		return fullTextCondition(field), []any{keyword}
+	if len(tokens) == 0 {
+		return keyword
 	}
 
-	fullTextTokens := strings.Join(tokens[:len(tokens)-1], " ")
-	partialToken := tokens[len(tokens)-1]
+	for i, token := range tokens {
+		tokens[i] = token + ":*"
+	}
+	return strings.Join(tokens, " & ")
+}
 
-	return fullTextCondition(field) + " AND " + field.Column + " ILIKE ?",
-		[]any{fullTextTokens, "%" + partialToken + "%"}
+func normalizeSearchKeyword(keyword string) string {
+	tokens := strings.Fields(keyword)
+	if len(tokens) == 0 {
+		return keyword
+	}
+	return strings.Join(tokens, " ")
 }
 
 func isPortableSearchMode(mode SearchMode) bool {
