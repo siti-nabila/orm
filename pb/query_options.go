@@ -16,11 +16,18 @@ func QueryOptionsFromProto(in *QueryOptions) (orm.QueryOptions, error) {
 		Select: append([]string(nil), in.GetSelect()...),
 	}
 
-	offsetMode, err := PaginationOffsetModeToORM(in.GetOffsetMode())
-	if err != nil {
-		return orm.QueryOptions{}, err
+	if inMemoryOffset := in.GetInMemoryOffset(); inMemoryOffset != nil {
+		cursor := inMemoryOffset.GetCursor()
+		out.InMemoryOffset = &orm.InMemoryOffsetOptions{
+			MaxLimit: int(inMemoryOffset.GetMaxLimit()),
+		}
+		if cursor != nil {
+			out.InMemoryOffset.Cursor = orm.Cursor{
+				Field: cursor.GetField(),
+				Value: cursor.GetValue(),
+			}
+		}
 	}
-	out.OffsetMode = offsetMode
 
 	for _, sort := range in.GetSort() {
 		if sort == nil {
@@ -101,19 +108,6 @@ func SearchModeToORM(mode SearchMode) (orm.SearchMode, error) {
 		return orm.SearchModeFullTextTrigram, nil
 	default:
 		return "", dictionary.ErrInvalidSearchMode
-	}
-}
-
-func PaginationOffsetModeToORM(mode PaginationOffsetMode) (orm.OffsetMode, error) {
-	switch mode {
-	case PaginationOffsetMode_PAGINATION_OFFSET_MODE_UNSPECIFIED:
-		return "", nil
-	case PaginationOffsetMode_PAGINATION_OFFSET_MODE_QUERY:
-		return orm.OffsetModeQuery, nil
-	case PaginationOffsetMode_PAGINATION_OFFSET_MODE_IN_MEMORY:
-		return orm.OffsetModeInMemory, nil
-	default:
-		return "", dictionary.ErrInvalidPaginationOffsetMode
 	}
 }
 

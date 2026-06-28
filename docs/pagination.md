@@ -136,7 +136,7 @@ behavior.
 it maps `orm.Operator` constants such as `orm.OpEqual` and
 `orm.OpGreaterThanEqual` to SQL internally.
 
-### Offset Mode
+### In-Memory Offset
 
 By default, `ScanPaginate` uses database offset pagination:
 
@@ -144,8 +144,8 @@ By default, `ScanPaginate` uses database offset pagination:
 LIMIT n OFFSET m
 ```
 
-Use `OffsetModeInMemory` when the caller wants the database query to read a
-bounded cursor batch and apply `Page`/`PerPage` slicing in Go:
+Use `InMemoryOffset` when the caller wants the database query to read a bounded
+cursor batch and apply `Page`/`PerPage` slicing in Go:
 
 ```go
 var users []User
@@ -154,17 +154,18 @@ pageMeta, err := db.UseModel(User{}).
     WhereOp("id", orm.OpGreaterThan, lastID).
     OrderBy("id ASC").
     ScanPaginate(ctx, &users, orm.PaginationOptions{
-        Page:       2,
-        PerPage:    20,
-        MaxLimit:   1000,
-        OffsetMode: orm.OffsetModeInMemory,
+        Page:    2,
+        PerPage: 20,
+        InMemoryOffset: &orm.PaginationInMemoryOffsetOptions{
+            MaxLimit: 1000,
+        },
     })
 ```
 
-In this mode, the data query uses `LIMIT MaxLimit` and does not emit `OFFSET`.
-The caller should add a cursor condition explicitly, such as `id > lastID` for
-ascending order or `id < lastID` for descending order. The ORM does not infer a
-cursor from `OrderBy` strings.
+In this lower-level `ScanPaginate` mode, the caller should add a cursor
+condition explicitly, such as `id > lastID` for ascending order or `id < lastID`
+for descending order. The data query uses `LIMIT MaxLimit` and does not emit
+`OFFSET`.
 
 Example PostgreSQL data query shape:
 
@@ -177,6 +178,30 @@ LIMIT 1000
 
 After scanning the batch, the ORM slices the result in memory using
 `Page`/`PerPage`.
+
+For `QueryPageWithConfig`, use `QueryOptions.InMemoryOffset`. This option keeps
+the cursor grouped under the in-memory mode, so normal query pagination does not
+need a cursor field:
+
+```go
+opts := orm.QueryOptions{
+    Page:  2,
+    Limit: 20,
+    InMemoryOffset: &orm.InMemoryOffsetOptions{
+        Cursor: orm.Cursor{
+            Field: "id",
+            Value: lastID,
+        },
+        MaxLimit: 1000,
+    },
+    Sort: []orm.SortField{{Field: "id"}},
+}
+```
+
+`Cursor.Field` is resolved through `AllowedFields`. For ascending sort the ORM
+adds `> cursor`, and for descending sort it adds `< cursor`. If
+`InMemoryOffset` is set without a cursor, `QueryPageWithConfig` returns a
+dictionary error.
 
 ### PostgreSQL Full Text Profile Search
 
@@ -410,17 +435,15 @@ type SearchQueryAnd struct {
 }
 ```
 
-`QueryOptions.Limit` maps to `PaginationOptions.PerPage`,
-`QueryOptions.Page` maps to `PaginationOptions.Page`, and
-`QueryOptions.OffsetMode` maps to `PaginationOptions.OffsetMode`.
+`QueryOptions.Limit` maps to `PaginationOptions.PerPage`, and
+`QueryOptions.Page` maps to `PaginationOptions.Page`.
 
 Example options:
 
 ```go
 opts := orm.QueryOptions{
-    Page:       1,
-    Limit:      20,
-    OffsetMode: orm.OffsetModeQuery,
+    Page:  1,
+    Limit: 20,
     Select: []string{"id", "name", "email", "joinDate"},
     Filters: []orm.Filter{
         {Field: "status", Operator: orm.OpEqual, Value: "ACTIVE"},

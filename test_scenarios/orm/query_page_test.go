@@ -514,6 +514,84 @@ func TestQueryPageFullTextTrigramProfileSearchUsesPrefixAndLexemeContains(t *tes
 	}
 }
 
+func TestQueryPageInMemoryOffsetAppliesCursorAndBatchLimit(t *testing.T) {
+	fake := &queryPageORM{
+		total: 3,
+		rows: []queryPageUser{
+			{ID: 4, Name: "four"},
+			{ID: 5, Name: "five"},
+			{ID: 6, Name: "six"},
+		},
+	}
+	var users []queryPageUser
+
+	pageData, err := orm.QueryPageWithConfig(
+		context.Background(),
+		query.New(fake).Table(queryPageUser{}),
+		&users,
+		orm.QueryPageConfig{
+			AllowedFields: queryPageAllowedFields(),
+		},
+		orm.QueryOptions{
+			Page:  2,
+			Limit: 2,
+			InMemoryOffset: &orm.InMemoryOffsetOptions{
+				Cursor: orm.Cursor{
+					Field: "id",
+					Value: int64(100),
+				},
+				MaxLimit: 10,
+			},
+			Sort: []orm.SortField{{Field: "id"}},
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !reflect.DeepEqual(pageData.Items, []queryPageUser{{ID: 6, Name: "six"}}) {
+		t.Fatalf("unexpected items: %+v", pageData.Items)
+	}
+	if len(fake.calls) != 2 {
+		t.Fatalf("expected count and data query, got %+v", fake.calls)
+	}
+	for _, call := range fake.calls {
+		if !strings.Contains(call.Query, "id > $1") {
+			t.Fatalf("missing cursor condition in %s", call.Query)
+		}
+		if !reflect.DeepEqual(call.Args, []any{int64(100)}) {
+			t.Fatalf("unexpected args: %+v", call.Args)
+		}
+	}
+	if !strings.Contains(fake.calls[1].Query, "ORDER BY id ASC") ||
+		!strings.HasSuffix(fake.calls[1].Query, " LIMIT 10") ||
+		strings.Contains(fake.calls[1].Query, "OFFSET") {
+		t.Fatalf("unexpected data query: %s", fake.calls[1].Query)
+	}
+}
+
+func TestQueryPageInMemoryOffsetRequiresCursor(t *testing.T) {
+	fake := &queryPageORM{}
+	var users []queryPageUser
+
+	_, err := orm.QueryPageWithConfig(
+		context.Background(),
+		query.New(fake).Table(queryPageUser{}),
+		&users,
+		orm.QueryPageConfig{
+			AllowedFields: queryPageAllowedFields(),
+		},
+		orm.QueryOptions{
+			Page:           1,
+			Limit:          10,
+			InMemoryOffset: &orm.InMemoryOffsetOptions{MaxLimit: 100},
+		},
+	)
+	if !queryPageSameError(err, dictionary.ErrPaginationCursorRequired) {
+		t.Fatalf("expected ErrPaginationCursorRequired, got %v", err)
+	}
+}
+
 func TestQueryPageSearchModeErrors(t *testing.T) {
 	tests := []struct {
 		name    string

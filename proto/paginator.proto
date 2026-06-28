@@ -13,7 +13,7 @@ message QueryOptions {
   SearchQuery search = 5;
   SearchQueryAnd search_and = 6;
   repeated Filter filters = 7;
-  PaginationOffsetMode offset_mode = 8;
+  InMemoryOffsetOptions in_memory_offset = 8;
 }
 
 message SortField {
@@ -36,10 +36,14 @@ enum SearchMode {
   SEARCH_MODE_FULL_TEXT_TRIGRAM = 5;
 }
 
-enum PaginationOffsetMode {
-  PAGINATION_OFFSET_MODE_UNSPECIFIED = 0;
-  PAGINATION_OFFSET_MODE_QUERY = 1;
-  PAGINATION_OFFSET_MODE_IN_MEMORY = 2;
+message InMemoryOffsetOptions {
+  Cursor cursor = 1;
+  uint32 max_limit = 2;
+}
+
+message Cursor {
+  string field = 1;
+  string value = 2;
 }
 
 message SearchField {

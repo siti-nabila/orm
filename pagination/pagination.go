@@ -13,8 +13,6 @@ const (
 )
 
 type (
-	OffsetMode string
-
 	Config struct {
 		DefaultLimit int
 		MaxLimit     int
@@ -26,10 +24,14 @@ type (
 	}
 
 	PaginationOptions struct {
-		Page       int
-		PerPage    int
-		MaxLimit   int
-		OffsetMode OffsetMode
+		Page           int
+		PerPage        int
+		MaxLimit       int
+		InMemoryOffset *InMemoryOffsetOptions
+	}
+
+	InMemoryOffsetOptions struct {
+		MaxLimit int
 	}
 
 	Meta struct {
@@ -59,11 +61,6 @@ type (
 		HasNext    bool  `json:"has_next"`
 		HasPrev    bool  `json:"has_prev"`
 	}
-)
-
-const (
-	OffsetModeQuery    OffsetMode = "query"
-	OffsetModeInMemory OffsetMode = "in_memory"
 )
 
 func Normalize(params Params) (Params, error) {
@@ -99,14 +96,10 @@ func NormalizeOptionsWithConfig(opts PaginationOptions, cfg Config) (PaginationO
 		return PaginationOptions{}, dictionary.ErrPaginationInvalidLimit
 	}
 
-	offsetMode, err := NormalizeOffsetMode(opts.OffsetMode)
-	if err != nil {
-		return PaginationOptions{}, err
-	}
-
 	if opts.MaxLimit > 0 {
 		cfg.MaxLimit = opts.MaxLimit
 	}
+	cfg = normalizeConfig(cfg)
 
 	params, err := NormalizeWithConfig(Params{
 		Page:  opts.Page,
@@ -116,25 +109,23 @@ func NormalizeOptionsWithConfig(opts PaginationOptions, cfg Config) (PaginationO
 		return PaginationOptions{}, err
 	}
 
-	return PaginationOptions{
-		Page:       params.Page,
-		PerPage:    params.Limit,
-		MaxLimit:   normalizeConfig(cfg).MaxLimit,
-		OffsetMode: offsetMode,
-	}, nil
-}
-
-func NormalizeOffsetMode(mode OffsetMode) (OffsetMode, error) {
-	if mode == "" {
-		return OffsetModeQuery, nil
+	normalized := PaginationOptions{
+		Page:     params.Page,
+		PerPage:  params.Limit,
+		MaxLimit: cfg.MaxLimit,
 	}
 
-	switch mode {
-	case OffsetModeQuery, OffsetModeInMemory:
-		return mode, nil
-	default:
-		return "", dictionary.ErrInvalidPaginationOffsetMode
+	if opts.InMemoryOffset != nil {
+		maxLimit := opts.InMemoryOffset.MaxLimit
+		if maxLimit <= 0 || maxLimit > cfg.MaxLimit {
+			maxLimit = cfg.MaxLimit
+		}
+		normalized.InMemoryOffset = &InMemoryOffsetOptions{
+			MaxLimit: maxLimit,
+		}
 	}
+
+	return normalized, nil
 }
 
 func normalizeConfig(cfg Config) Config {
