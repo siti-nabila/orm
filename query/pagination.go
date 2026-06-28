@@ -2,7 +2,9 @@ package query
 
 import (
 	"context"
+	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/siti-nabila/orm/builder"
 	"github.com/siti-nabila/orm/pagination"
@@ -106,9 +108,11 @@ func (b *QueryBuilder) ScanPaginate(ctx context.Context, dest any, opts paginati
 	if err := b.orm.ScanQuery(scanCtx, dataRes.Query, dataRes.Args, dataRes.SelectedCols, dest); err != nil {
 		return nil, err
 	}
+	nextCursor := extractInMemoryNextCursor(dest, opts)
 	applyInMemoryPaginationOffset(dest, opts)
 
 	pageMeta := pagination.BuildPageMeta(opts, totalRows)
+	pageMeta.NextCursor = nextCursor
 	return &pageMeta, nil
 }
 
@@ -234,6 +238,71 @@ func applyInMemoryPaginationOffset(dest any, opts pagination.PaginationOptions) 
 		end = slice.Len()
 	}
 	slice.Set(slice.Slice(offset, end))
+}
+
+func extractInMemoryNextCursor(dest any, opts pagination.PaginationOptions) string {
+	if opts.InMemoryOffset == nil || opts.InMemoryOffset.CursorField == "" {
+		return ""
+	}
+
+	slice := reflect.ValueOf(dest).Elem()
+	if slice.Len() == 0 {
+		return ""
+	}
+
+	item := slice.Index(slice.Len() - 1)
+	for item.Kind() == reflect.Pointer {
+		if item.IsNil() {
+			return ""
+		}
+		item = item.Elem()
+	}
+	if item.Kind() != reflect.Struct {
+		return ""
+	}
+
+	field := findCursorField(item, opts.InMemoryOffset.CursorField)
+	if !field.IsValid() {
+		return ""
+	}
+	if field.Kind() == reflect.Pointer {
+		if field.IsNil() {
+			return ""
+		}
+		field = field.Elem()
+	}
+
+	return fmt.Sprint(field.Interface())
+}
+
+func findCursorField(item reflect.Value, cursorField string) reflect.Value {
+	itemType := item.Type()
+	for i := 0; i < item.NumField(); i++ {
+		structField := itemType.Field(i)
+		if !structField.IsExported() {
+			continue
+		}
+		if strings.EqualFold(structField.Name, cursorField) {
+			return item.Field(i)
+		}
+		if sqlColumnName(structField.Tag.Get("sql")) == cursorField {
+			return item.Field(i)
+		}
+	}
+	return reflect.Value{}
+}
+
+func sqlColumnName(tag string) string {
+	if tag == "" || tag == "-" {
+		return ""
+	}
+	for _, part := range strings.Split(tag, ";") {
+		part = strings.TrimSpace(part)
+		if strings.HasPrefix(part, "column:") {
+			return strings.TrimPrefix(part, "column:")
+		}
+	}
+	return ""
 }
 
 func validatePaginationDest(dest any) error {

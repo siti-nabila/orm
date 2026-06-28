@@ -552,6 +552,9 @@ func TestQueryPageInMemoryOffsetAppliesCursorAndBatchLimit(t *testing.T) {
 	if !reflect.DeepEqual(pageData.Items, []queryPageUser{{ID: 6, Name: "six"}}) {
 		t.Fatalf("unexpected items: %+v", pageData.Items)
 	}
+	if pageData.NextCursor != "6" {
+		t.Fatalf("unexpected next cursor: %s", pageData.NextCursor)
+	}
 	if len(fake.calls) != 2 {
 		t.Fatalf("expected count and data query, got %+v", fake.calls)
 	}
