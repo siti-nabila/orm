@@ -202,10 +202,12 @@ opts := orm.QueryOptions{
 ```
 
 `Cursor.Field` is resolved through `AllowedFields`. For ascending sort the ORM
-adds `> cursor`, and for descending sort it adds `< cursor`. If
-`InMemoryOffset` is set without a cursor, `QueryPageWithConfig` returns a
-dictionary error. `PageData.NextCursor` is filled from the same cursor field and
-is encoded as `next_cursor` in JSON responses.
+adds `> cursor`, and for descending sort it adds `< cursor`. For the first
+batch, set `Cursor.Value` to an empty string; the ORM keeps in-memory offset
+mode but omits the cursor predicate. If `InMemoryOffset` is set with an empty
+`Cursor.Field` or nil `Cursor.Value`, `QueryPageWithConfig` returns a dictionary
+error. `PageData.NextCursor` is filled from the same cursor field and is encoded
+as `next_cursor` in JSON responses.
 
 ### PostgreSQL Full Text Profile Search
 
