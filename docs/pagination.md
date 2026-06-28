@@ -136,6 +136,48 @@ behavior.
 it maps `orm.Operator` constants such as `orm.OpEqual` and
 `orm.OpGreaterThanEqual` to SQL internally.
 
+### Offset Mode
+
+By default, `ScanPaginate` uses database offset pagination:
+
+```sql
+LIMIT n OFFSET m
+```
+
+Use `OffsetModeInMemory` when the caller wants the database query to read a
+bounded cursor batch and apply `Page`/`PerPage` slicing in Go:
+
+```go
+var users []User
+
+pageMeta, err := db.UseModel(User{}).
+    WhereOp("id", orm.OpGreaterThan, lastID).
+    OrderBy("id ASC").
+    ScanPaginate(ctx, &users, orm.PaginationOptions{
+        Page:       2,
+        PerPage:    20,
+        MaxLimit:   1000,
+        OffsetMode: orm.OffsetModeInMemory,
+    })
+```
+
+In this mode, the data query uses `LIMIT MaxLimit` and does not emit `OFFSET`.
+The caller should add a cursor condition explicitly, such as `id > lastID` for
+ascending order or `id < lastID` for descending order. The ORM does not infer a
+cursor from `OrderBy` strings.
+
+Example PostgreSQL data query shape:
+
+```sql
+SELECT ... FROM users
+WHERE id > $1
+ORDER BY id ASC
+LIMIT 1000
+```
+
+After scanning the batch, the ORM slices the result in memory using
+`Page`/`PerPage`.
+
 ### PostgreSQL Full Text Profile Search
 
 For PostgreSQL `tsvector` search columns, use `WhereFullText` instead of a
@@ -368,15 +410,17 @@ type SearchQueryAnd struct {
 }
 ```
 
-`QueryOptions.Limit` maps to `PaginationOptions.PerPage`, and
-`QueryOptions.Page` maps to `PaginationOptions.Page`.
+`QueryOptions.Limit` maps to `PaginationOptions.PerPage`,
+`QueryOptions.Page` maps to `PaginationOptions.Page`, and
+`QueryOptions.OffsetMode` maps to `PaginationOptions.OffsetMode`.
 
 Example options:
 
 ```go
 opts := orm.QueryOptions{
-    Page:  1,
-    Limit: 20,
+    Page:       1,
+    Limit:      20,
+    OffsetMode: orm.OffsetModeQuery,
     Select: []string{"id", "name", "email", "joinDate"},
     Filters: []orm.Filter{
         {Field: "status", Operator: orm.OpEqual, Value: "ACTIVE"},

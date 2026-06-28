@@ -13,6 +13,8 @@ const (
 )
 
 type (
+	OffsetMode string
+
 	Config struct {
 		DefaultLimit int
 		MaxLimit     int
@@ -24,9 +26,10 @@ type (
 	}
 
 	PaginationOptions struct {
-		Page     int
-		PerPage  int
-		MaxLimit int
+		Page       int
+		PerPage    int
+		MaxLimit   int
+		OffsetMode OffsetMode
 	}
 
 	Meta struct {
@@ -56,6 +59,11 @@ type (
 		HasNext    bool  `json:"has_next"`
 		HasPrev    bool  `json:"has_prev"`
 	}
+)
+
+const (
+	OffsetModeQuery    OffsetMode = "query"
+	OffsetModeInMemory OffsetMode = "in_memory"
 )
 
 func Normalize(params Params) (Params, error) {
@@ -91,6 +99,11 @@ func NormalizeOptionsWithConfig(opts PaginationOptions, cfg Config) (PaginationO
 		return PaginationOptions{}, dictionary.ErrPaginationInvalidLimit
 	}
 
+	offsetMode, err := NormalizeOffsetMode(opts.OffsetMode)
+	if err != nil {
+		return PaginationOptions{}, err
+	}
+
 	if opts.MaxLimit > 0 {
 		cfg.MaxLimit = opts.MaxLimit
 	}
@@ -104,10 +117,24 @@ func NormalizeOptionsWithConfig(opts PaginationOptions, cfg Config) (PaginationO
 	}
 
 	return PaginationOptions{
-		Page:     params.Page,
-		PerPage:  params.Limit,
-		MaxLimit: opts.MaxLimit,
+		Page:       params.Page,
+		PerPage:    params.Limit,
+		MaxLimit:   normalizeConfig(cfg).MaxLimit,
+		OffsetMode: offsetMode,
 	}, nil
+}
+
+func NormalizeOffsetMode(mode OffsetMode) (OffsetMode, error) {
+	if mode == "" {
+		return OffsetModeQuery, nil
+	}
+
+	switch mode {
+	case OffsetModeQuery, OffsetModeInMemory:
+		return mode, nil
+	default:
+		return "", dictionary.ErrInvalidPaginationOffsetMode
+	}
 }
 
 func normalizeConfig(cfg Config) Config {

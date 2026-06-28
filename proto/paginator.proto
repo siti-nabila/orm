@@ -13,6 +13,7 @@ message QueryOptions {
   SearchQuery search = 5;
   SearchQueryAnd search_and = 6;
   repeated Filter filters = 7;
+  PaginationOffsetMode offset_mode = 8;
 }
 
 message SortField {
@@ -33,6 +34,12 @@ enum SearchMode {
   SEARCH_MODE_FULL_TEXT = 3;
   SEARCH_MODE_TRIGRAM = 4;
   SEARCH_MODE_FULL_TEXT_TRIGRAM = 5;
+}
+
+enum PaginationOffsetMode {
+  PAGINATION_OFFSET_MODE_UNSPECIFIED = 0;
+  PAGINATION_OFFSET_MODE_QUERY = 1;
+  PAGINATION_OFFSET_MODE_IN_MEMORY = 2;
 }
 
 message SearchField {

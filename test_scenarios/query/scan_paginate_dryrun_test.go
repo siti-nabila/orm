@@ -171,6 +171,48 @@ func TestDryRunScanPaginateFiltersJoinOrderAndPlaceholdersByDialect(t *testing.T
 	}
 }
 
+func TestDryRunScanPaginateInMemoryOffsetOmitsQueryOffset(t *testing.T) {
+	o := &paginationTestORM{dialect: dialect.NewPostgres()}
+
+	q, err := query.New(o).
+		Table(paginationTestUser{}).
+		Where("users.active = ?", true).
+		WhereOp("users.id", query.OpGreaterThan, int64(100))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := q.
+		OrderBy("users.id ASC").
+		DryRunScanPaginate(pagination.PaginationOptions{
+			Page:       3,
+			PerPage:    10,
+			MaxLimit:   100,
+			OffsetMode: pagination.OffsetModeInMemory,
+		})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !strings.Contains(result.Count.Query, "users.active = $1") ||
+		!strings.Contains(result.Count.Query, "users.id > $2") {
+		t.Fatalf("unexpected count query: %s", result.Count.Query)
+	}
+	if !strings.Contains(result.Data.Query, "users.id > $2") ||
+		!strings.Contains(result.Data.Query, "ORDER BY users.id ASC") ||
+		!strings.HasSuffix(result.Data.Query, " LIMIT 100") {
+		t.Fatalf("unexpected data query: %s", result.Data.Query)
+	}
+	if strings.Contains(result.Data.Query, "OFFSET") {
+		t.Fatalf("data query should not contain OFFSET for in-memory offset: %s", result.Data.Query)
+	}
+	wantArgs := []any{true, int64(100)}
+	if !reflect.DeepEqual(result.Count.Args, wantArgs) ||
+		!reflect.DeepEqual(result.Data.Args, wantArgs) {
+		t.Fatalf("unexpected args: count=%+v data=%+v", result.Count.Args, result.Data.Args)
+	}
+}
+
 func TestDryRunScanPaginatePostgresFullTextProfileSearch(t *testing.T) {
 	o := &paginationTestORM{dialect: dialect.NewPostgres()}
 

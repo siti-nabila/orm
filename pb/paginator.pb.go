@@ -79,6 +79,55 @@ func (SearchMode) EnumDescriptor() ([]byte, []int) {
 	return file_proto_paginator_proto_rawDescGZIP(), []int{0}
 }
 
+type PaginationOffsetMode int32
+
+const (
+	PaginationOffsetMode_PAGINATION_OFFSET_MODE_UNSPECIFIED PaginationOffsetMode = 0
+	PaginationOffsetMode_PAGINATION_OFFSET_MODE_QUERY       PaginationOffsetMode = 1
+	PaginationOffsetMode_PAGINATION_OFFSET_MODE_IN_MEMORY   PaginationOffsetMode = 2
+)
+
+// Enum value maps for PaginationOffsetMode.
+var (
+	PaginationOffsetMode_name = map[int32]string{
+		0: "PAGINATION_OFFSET_MODE_UNSPECIFIED",
+		1: "PAGINATION_OFFSET_MODE_QUERY",
+		2: "PAGINATION_OFFSET_MODE_IN_MEMORY",
+	}
+	PaginationOffsetMode_value = map[string]int32{
+		"PAGINATION_OFFSET_MODE_UNSPECIFIED": 0,
+		"PAGINATION_OFFSET_MODE_QUERY":       1,
+		"PAGINATION_OFFSET_MODE_IN_MEMORY":   2,
+	}
+)
+
+func (x PaginationOffsetMode) Enum() *PaginationOffsetMode {
+	p := new(PaginationOffsetMode)
+	*p = x
+	return p
+}
+
+func (x PaginationOffsetMode) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (PaginationOffsetMode) Descriptor() protoreflect.EnumDescriptor {
+	return file_proto_paginator_proto_enumTypes[1].Descriptor()
+}
+
+func (PaginationOffsetMode) Type() protoreflect.EnumType {
+	return &file_proto_paginator_proto_enumTypes[1]
+}
+
+func (x PaginationOffsetMode) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use PaginationOffsetMode.Descriptor instead.
+func (PaginationOffsetMode) EnumDescriptor() ([]byte, []int) {
+	return file_proto_paginator_proto_rawDescGZIP(), []int{1}
+}
+
 type FilterOperator int32
 
 const (
@@ -130,11 +179,11 @@ func (x FilterOperator) String() string {
 }
 
 func (FilterOperator) Descriptor() protoreflect.EnumDescriptor {
-	return file_proto_paginator_proto_enumTypes[1].Descriptor()
+	return file_proto_paginator_proto_enumTypes[2].Descriptor()
 }
 
 func (FilterOperator) Type() protoreflect.EnumType {
-	return &file_proto_paginator_proto_enumTypes[1]
+	return &file_proto_paginator_proto_enumTypes[2]
 }
 
 func (x FilterOperator) Number() protoreflect.EnumNumber {
@@ -143,7 +192,7 @@ func (x FilterOperator) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use FilterOperator.Descriptor instead.
 func (FilterOperator) EnumDescriptor() ([]byte, []int) {
-	return file_proto_paginator_proto_rawDescGZIP(), []int{1}
+	return file_proto_paginator_proto_rawDescGZIP(), []int{2}
 }
 
 type QueryOptions struct {
@@ -155,6 +204,7 @@ type QueryOptions struct {
 	Search        *SearchQuery           `protobuf:"bytes,5,opt,name=search,proto3" json:"search,omitempty"`
 	SearchAnd     *SearchQueryAnd        `protobuf:"bytes,6,opt,name=search_and,json=searchAnd,proto3" json:"search_and,omitempty"`
 	Filters       []*Filter              `protobuf:"bytes,7,rep,name=filters,proto3" json:"filters,omitempty"`
+	OffsetMode    PaginationOffsetMode   `protobuf:"varint,8,opt,name=offset_mode,json=offsetMode,proto3,enum=orm.v1.PaginationOffsetMode" json:"offset_mode,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -236,6 +286,13 @@ func (x *QueryOptions) GetFilters() []*Filter {
 		return x.Filters
 	}
 	return nil
+}
+
+func (x *QueryOptions) GetOffsetMode() PaginationOffsetMode {
+	if x != nil {
+		return x.OffsetMode
+	}
+	return PaginationOffsetMode_PAGINATION_OFFSET_MODE_UNSPECIFIED
 }
 
 type SortField struct {
@@ -518,7 +575,7 @@ var File_proto_paginator_proto protoreflect.FileDescriptor
 
 const file_proto_paginator_proto_rawDesc = "" +
 	"\n" +
-	"\x15proto/paginator.proto\x12\x06orm.v1\"\x85\x02\n" +
+	"\x15proto/paginator.proto\x12\x06orm.v1\"\xc4\x02\n" +
 	"\fQueryOptions\x12\x12\n" +
 	"\x04page\x18\x01 \x01(\rR\x04page\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\rR\x05limit\x12\x16\n" +
@@ -527,7 +584,9 @@ const file_proto_paginator_proto_rawDesc = "" +
 	"\x06search\x18\x05 \x01(\v2\x13.orm.v1.SearchQueryR\x06search\x125\n" +
 	"\n" +
 	"search_and\x18\x06 \x01(\v2\x16.orm.v1.SearchQueryAndR\tsearchAnd\x12(\n" +
-	"\afilters\x18\a \x03(\v2\x0e.orm.v1.FilterR\afilters\"5\n" +
+	"\afilters\x18\a \x03(\v2\x0e.orm.v1.FilterR\afilters\x12=\n" +
+	"\voffset_mode\x18\b \x01(\x0e2\x1c.orm.v1.PaginationOffsetModeR\n" +
+	"offsetMode\"5\n" +
 	"\tSortField\x12\x14\n" +
 	"\x05field\x18\x01 \x01(\tR\x05field\x12\x12\n" +
 	"\x04desc\x18\x02 \x01(\bR\x04desc\"g\n" +
@@ -552,7 +611,11 @@ const file_proto_paginator_proto_rawDesc = "" +
 	"\x12SEARCH_MODE_PREFIX\x10\x02\x12\x19\n" +
 	"\x15SEARCH_MODE_FULL_TEXT\x10\x03\x12\x17\n" +
 	"\x13SEARCH_MODE_TRIGRAM\x10\x04\x12!\n" +
-	"\x1dSEARCH_MODE_FULL_TEXT_TRIGRAM\x10\x05*\xb1\x02\n" +
+	"\x1dSEARCH_MODE_FULL_TEXT_TRIGRAM\x10\x05*\x86\x01\n" +
+	"\x14PaginationOffsetMode\x12&\n" +
+	"\"PAGINATION_OFFSET_MODE_UNSPECIFIED\x10\x00\x12 \n" +
+	"\x1cPAGINATION_OFFSET_MODE_QUERY\x10\x01\x12$\n" +
+	" PAGINATION_OFFSET_MODE_IN_MEMORY\x10\x02*\xb1\x02\n" +
 	"\x0eFilterOperator\x12\x1f\n" +
 	"\x1bFILTER_OPERATOR_UNSPECIFIED\x10\x00\x12\x19\n" +
 	"\x15FILTER_OPERATOR_EQUAL\x10\x01\x12\x1d\n" +
@@ -576,31 +639,33 @@ func file_proto_paginator_proto_rawDescGZIP() []byte {
 	return file_proto_paginator_proto_rawDescData
 }
 
-var file_proto_paginator_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_proto_paginator_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
 var file_proto_paginator_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_proto_paginator_proto_goTypes = []any{
-	(SearchMode)(0),        // 0: orm.v1.SearchMode
-	(FilterOperator)(0),    // 1: orm.v1.FilterOperator
-	(*QueryOptions)(nil),   // 2: orm.v1.QueryOptions
-	(*SortField)(nil),      // 3: orm.v1.SortField
-	(*SearchQuery)(nil),    // 4: orm.v1.SearchQuery
-	(*SearchField)(nil),    // 5: orm.v1.SearchField
-	(*SearchQueryAnd)(nil), // 6: orm.v1.SearchQueryAnd
-	(*Filter)(nil),         // 7: orm.v1.Filter
+	(SearchMode)(0),           // 0: orm.v1.SearchMode
+	(PaginationOffsetMode)(0), // 1: orm.v1.PaginationOffsetMode
+	(FilterOperator)(0),       // 2: orm.v1.FilterOperator
+	(*QueryOptions)(nil),      // 3: orm.v1.QueryOptions
+	(*SortField)(nil),         // 4: orm.v1.SortField
+	(*SearchQuery)(nil),       // 5: orm.v1.SearchQuery
+	(*SearchField)(nil),       // 6: orm.v1.SearchField
+	(*SearchQueryAnd)(nil),    // 7: orm.v1.SearchQueryAnd
+	(*Filter)(nil),            // 8: orm.v1.Filter
 }
 var file_proto_paginator_proto_depIdxs = []int32{
-	3, // 0: orm.v1.QueryOptions.sort:type_name -> orm.v1.SortField
-	4, // 1: orm.v1.QueryOptions.search:type_name -> orm.v1.SearchQuery
-	6, // 2: orm.v1.QueryOptions.search_and:type_name -> orm.v1.SearchQueryAnd
-	7, // 3: orm.v1.QueryOptions.filters:type_name -> orm.v1.Filter
-	0, // 4: orm.v1.SearchQuery.mode:type_name -> orm.v1.SearchMode
-	5, // 5: orm.v1.SearchQueryAnd.fields:type_name -> orm.v1.SearchField
-	1, // 6: orm.v1.Filter.operator:type_name -> orm.v1.FilterOperator
-	7, // [7:7] is the sub-list for method output_type
-	7, // [7:7] is the sub-list for method input_type
-	7, // [7:7] is the sub-list for extension type_name
-	7, // [7:7] is the sub-list for extension extendee
-	0, // [0:7] is the sub-list for field type_name
+	4, // 0: orm.v1.QueryOptions.sort:type_name -> orm.v1.SortField
+	5, // 1: orm.v1.QueryOptions.search:type_name -> orm.v1.SearchQuery
+	7, // 2: orm.v1.QueryOptions.search_and:type_name -> orm.v1.SearchQueryAnd
+	8, // 3: orm.v1.QueryOptions.filters:type_name -> orm.v1.Filter
+	1, // 4: orm.v1.QueryOptions.offset_mode:type_name -> orm.v1.PaginationOffsetMode
+	0, // 5: orm.v1.SearchQuery.mode:type_name -> orm.v1.SearchMode
+	6, // 6: orm.v1.SearchQueryAnd.fields:type_name -> orm.v1.SearchField
+	2, // 7: orm.v1.Filter.operator:type_name -> orm.v1.FilterOperator
+	8, // [8:8] is the sub-list for method output_type
+	8, // [8:8] is the sub-list for method input_type
+	8, // [8:8] is the sub-list for extension type_name
+	8, // [8:8] is the sub-list for extension extendee
+	0, // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_proto_paginator_proto_init() }
@@ -613,7 +678,7 @@ func file_proto_paginator_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_paginator_proto_rawDesc), len(file_proto_paginator_proto_rawDesc)),
-			NumEnums:      2,
+			NumEnums:      3,
 			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   0,
