@@ -192,7 +192,8 @@ func queryPageInMemoryOffset(opts *InMemoryOffsetOptions) *pagination.InMemoryOf
 	}
 
 	return &pagination.InMemoryOffsetOptions{
-		MaxLimit: opts.MaxLimit,
+		CursorField: opts.Cursor.Field,
+		MaxLimit:    opts.MaxLimit,
 	}
 }
 

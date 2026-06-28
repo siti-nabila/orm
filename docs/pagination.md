@@ -164,7 +164,8 @@ pageMeta, err := db.UseModel(User{}).
 
 In this lower-level `ScanPaginate` mode, the caller should add a cursor
 condition explicitly, such as `id > lastID` for ascending order or `id < lastID`
-for descending order. The data query uses `LIMIT MaxLimit` and does not emit
+for descending order. Set `CursorField` when you want the paginator to return
+`PageMeta.NextCursor`. The data query uses `LIMIT MaxLimit` and does not emit
 `OFFSET`.
 
 Example PostgreSQL data query shape:
@@ -177,7 +178,9 @@ LIMIT 1000
 ```
 
 After scanning the batch, the ORM slices the result in memory using
-`Page`/`PerPage`.
+`Page`/`PerPage`. `NextCursor` is taken from the last row in the scanned batch,
+before in-memory slicing, so callers can send it as the cursor for the next
+batch.
 
 For `QueryPageWithConfig`, use `QueryOptions.InMemoryOffset`. This option keeps
 the cursor grouped under the in-memory mode, so normal query pagination does not
@@ -201,7 +204,8 @@ opts := orm.QueryOptions{
 `Cursor.Field` is resolved through `AllowedFields`. For ascending sort the ORM
 adds `> cursor`, and for descending sort it adds `< cursor`. If
 `InMemoryOffset` is set without a cursor, `QueryPageWithConfig` returns a
-dictionary error.
+dictionary error. `PageData.NextCursor` is filled from the same cursor field and
+is encoded as `next_cursor` in JSON responses.
 
 ### PostgreSQL Full Text Profile Search
 

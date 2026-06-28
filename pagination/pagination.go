@@ -31,7 +31,8 @@ type (
 	}
 
 	InMemoryOffsetOptions struct {
-		MaxLimit int
+		CursorField string
+		MaxLimit    int
 	}
 
 	Meta struct {
@@ -50,16 +51,18 @@ type (
 		TotalPages int
 		HasNext    bool
 		HasPrev    bool
+		NextCursor string
 	}
 
 	PageData[T any] struct {
-		Items      []T   `json:"items"`
-		Total      int64 `json:"total"`
-		Page       int   `json:"page"`
-		Limit      int   `json:"limit"`
-		TotalPages int   `json:"total_pages"`
-		HasNext    bool  `json:"has_next"`
-		HasPrev    bool  `json:"has_prev"`
+		Items      []T    `json:"items"`
+		Total      int64  `json:"total"`
+		Page       int    `json:"page"`
+		Limit      int    `json:"limit"`
+		TotalPages int    `json:"total_pages"`
+		HasNext    bool   `json:"has_next"`
+		HasPrev    bool   `json:"has_prev"`
+		NextCursor string `json:"next_cursor,omitempty"`
 	}
 )
 
@@ -121,7 +124,8 @@ func NormalizeOptionsWithConfig(opts PaginationOptions, cfg Config) (PaginationO
 			maxLimit = cfg.MaxLimit
 		}
 		normalized.InMemoryOffset = &InMemoryOffsetOptions{
-			MaxLimit: maxLimit,
+			CursorField: opts.InMemoryOffset.CursorField,
+			MaxLimit:    maxLimit,
 		}
 	}
 
@@ -174,6 +178,7 @@ func NewPageData[T any](items []T, meta PageMeta) PageData[T] {
 		TotalPages: meta.TotalPages,
 		HasNext:    meta.HasNext,
 		HasPrev:    meta.HasPrev,
+		NextCursor: meta.NextCursor,
 	}
 }
 

@@ -262,7 +262,8 @@ func TestScanPaginateInMemoryOffsetScansAndSlicesPage(t *testing.T) {
 			Page:    2,
 			PerPage: 2,
 			InMemoryOffset: &orm.PaginationInMemoryOffsetOptions{
-				MaxLimit: 10,
+				CursorField: "id",
+				MaxLimit:    10,
 			},
 		})
 	if err != nil {
@@ -277,6 +278,9 @@ func TestScanPaginateInMemoryOffsetScansAndSlicesPage(t *testing.T) {
 	}
 	if pageMeta.Total != 5 || pageMeta.TotalPages != 3 || !pageMeta.HasNext || !pageMeta.HasPrev {
 		t.Fatalf("unexpected page meta: %+v", pageMeta)
+	}
+	if pageMeta.NextCursor != "4" {
+		t.Fatalf("unexpected next cursor: %s", pageMeta.NextCursor)
 	}
 
 	queries := state.snapshotQueries()

@@ -213,13 +213,16 @@ func TestNormalizeOptionsInMemoryOffset(t *testing.T) {
 		Page:    1,
 		PerPage: 10,
 		InMemoryOffset: &pagination.InMemoryOffsetOptions{
-			MaxLimit: 25,
+			CursorField: "id",
+			MaxLimit:    25,
 		},
 	}, pagination.Config{MaxLimit: 50})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if inMemory.InMemoryOffset == nil || inMemory.InMemoryOffset.MaxLimit != 25 {
+	if inMemory.InMemoryOffset == nil ||
+		inMemory.InMemoryOffset.CursorField != "id" ||
+		inMemory.InMemoryOffset.MaxLimit != 25 {
 		t.Fatalf("unexpected in-memory offset options: %+v", inMemory.InMemoryOffset)
 	}
 
