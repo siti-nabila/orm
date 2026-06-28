@@ -197,7 +197,7 @@ func TestBuildPageMeta(t *testing.T) {
 	}
 }
 
-func TestNormalizeOptionsOffsetMode(t *testing.T) {
+func TestNormalizeOptionsInMemoryOffset(t *testing.T) {
 	defaultMode, err := pagination.NormalizeOptionsWithConfig(pagination.PaginationOptions{
 		Page:    1,
 		PerPage: 10,
@@ -205,29 +205,36 @@ func TestNormalizeOptionsOffsetMode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if defaultMode.OffsetMode != pagination.OffsetModeQuery {
-		t.Fatalf("unexpected default offset mode: %s", defaultMode.OffsetMode)
+	if defaultMode.InMemoryOffset != nil {
+		t.Fatalf("unexpected in-memory offset options: %+v", defaultMode.InMemoryOffset)
 	}
 
 	inMemory, err := pagination.NormalizeOptionsWithConfig(pagination.PaginationOptions{
-		Page:       1,
-		PerPage:    10,
-		OffsetMode: pagination.OffsetModeInMemory,
-	}, pagination.Config{})
+		Page:    1,
+		PerPage: 10,
+		InMemoryOffset: &pagination.InMemoryOffsetOptions{
+			MaxLimit: 25,
+		},
+	}, pagination.Config{MaxLimit: 50})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if inMemory.OffsetMode != pagination.OffsetModeInMemory {
-		t.Fatalf("unexpected offset mode: %s", inMemory.OffsetMode)
+	if inMemory.InMemoryOffset == nil || inMemory.InMemoryOffset.MaxLimit != 25 {
+		t.Fatalf("unexpected in-memory offset options: %+v", inMemory.InMemoryOffset)
 	}
 
-	_, err = pagination.NormalizeOptionsWithConfig(pagination.PaginationOptions{
-		Page:       1,
-		PerPage:    10,
-		OffsetMode: pagination.OffsetMode("invalid"),
-	}, pagination.Config{})
-	if !sameError(err, dictionary.ErrInvalidPaginationOffsetMode) {
-		t.Fatalf("expected ErrInvalidPaginationOffsetMode, got %v", err)
+	capped, err := pagination.NormalizeOptionsWithConfig(pagination.PaginationOptions{
+		Page:    1,
+		PerPage: 10,
+		InMemoryOffset: &pagination.InMemoryOffsetOptions{
+			MaxLimit: 100,
+		},
+	}, pagination.Config{MaxLimit: 50})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if capped.InMemoryOffset == nil || capped.InMemoryOffset.MaxLimit != 50 {
+		t.Fatalf("unexpected capped in-memory offset options: %+v", capped.InMemoryOffset)
 	}
 }
 

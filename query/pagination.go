@@ -203,8 +203,8 @@ func (b *QueryBuilder) scanPaginateBuilder(opts pagination.PaginationOptions) (*
 	limit := opts.PerPage
 	offset := pagination.OptionsOffset(opts)
 
-	if opts.OffsetMode == pagination.OffsetModeInMemory {
-		limit = opts.MaxLimit
+	if opts.InMemoryOffset != nil {
+		limit = opts.InMemoryOffset.MaxLimit
 		pageBuilder.limit = &limit
 		pageBuilder.offset = nil
 		pageBuilder.singleRow = false
@@ -218,7 +218,7 @@ func (b *QueryBuilder) scanPaginateBuilder(opts pagination.PaginationOptions) (*
 }
 
 func applyInMemoryPaginationOffset(dest any, opts pagination.PaginationOptions) {
-	if opts.OffsetMode != pagination.OffsetModeInMemory {
+	if opts.InMemoryOffset == nil {
 		return
 	}
 

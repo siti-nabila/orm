@@ -259,10 +259,11 @@ func TestScanPaginateInMemoryOffsetScansAndSlicesPage(t *testing.T) {
 	}
 	pageMeta, err := q.OrderBy("id ASC").
 		ScanPaginate(context.Background(), &users, orm.PaginationOptions{
-			Page:       2,
-			PerPage:    2,
-			MaxLimit:   10,
-			OffsetMode: orm.OffsetModeInMemory,
+			Page:    2,
+			PerPage: 2,
+			InMemoryOffset: &orm.PaginationInMemoryOffsetOptions{
+				MaxLimit: 10,
+			},
 		})
 	if err != nil {
 		t.Fatal(err)

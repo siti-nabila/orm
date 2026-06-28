@@ -11,9 +11,15 @@ import (
 
 func TestQueryOptionsFromProto(t *testing.T) {
 	got, err := ormpb.QueryOptionsFromProto(&ormpb.QueryOptions{
-		Page:       2,
-		Limit:      25,
-		OffsetMode: ormpb.PaginationOffsetMode_PAGINATION_OFFSET_MODE_IN_MEMORY,
+		Page:  2,
+		Limit: 25,
+		InMemoryOffset: &ormpb.InMemoryOffsetOptions{
+			Cursor: &ormpb.Cursor{
+				Field: "id",
+				Value: "100",
+			},
+			MaxLimit: 500,
+		},
 		Select: []string{
 			"id",
 			"email",
@@ -48,10 +54,16 @@ func TestQueryOptionsFromProto(t *testing.T) {
 	}
 
 	want := orm.QueryOptions{
-		Page:       2,
-		Limit:      25,
-		OffsetMode: orm.OffsetModeInMemory,
-		Select:     []string{"id", "email"},
+		Page:  2,
+		Limit: 25,
+		InMemoryOffset: &orm.InMemoryOffsetOptions{
+			Cursor: orm.Cursor{
+				Field: "id",
+				Value: "100",
+			},
+			MaxLimit: 500,
+		},
+		Select: []string{"id", "email"},
 		Sort: []orm.SortField{
 			{Field: "createdAt", Desc: true},
 		},
@@ -80,15 +92,6 @@ func TestQueryOptionsFromProto(t *testing.T) {
 
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("unexpected query options:\ngot=%#v\nwant=%#v", got, want)
-	}
-}
-
-func TestQueryOptionsFromProtoRejectsInvalidOffsetMode(t *testing.T) {
-	_, err := ormpb.QueryOptionsFromProto(&ormpb.QueryOptions{
-		OffsetMode: ormpb.PaginationOffsetMode(99),
-	})
-	if !sameError(err, dictionary.ErrInvalidPaginationOffsetMode) {
-		t.Fatalf("expected ErrInvalidPaginationOffsetMode, got %v", err)
 	}
 }
 

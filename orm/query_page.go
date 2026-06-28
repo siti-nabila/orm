@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/siti-nabila/orm/dialect"
+	"github.com/siti-nabila/orm/pagination"
 	"github.com/siti-nabila/orm/pkg/dictionary"
 	"github.com/siti-nabila/orm/query"
 )
@@ -14,14 +15,24 @@ type (
 	QueryBuilder = query.QueryBuilder
 
 	QueryOptions struct {
-		Page       int
-		Limit      int
-		OffsetMode OffsetMode
-		Sort       []SortField
-		Search     *SearchQuery
-		SearchAnd  *SearchQueryAnd
-		Filters    []Filter
-		Select     []string
+		Page           int
+		Limit          int
+		InMemoryOffset *InMemoryOffsetOptions
+		Sort           []SortField
+		Search         *SearchQuery
+		SearchAnd      *SearchQueryAnd
+		Filters        []Filter
+		Select         []string
+	}
+
+	InMemoryOffsetOptions struct {
+		Cursor   Cursor
+		MaxLimit int
+	}
+
+	Cursor struct {
+		Field string
+		Value any
 	}
 
 	SortField struct {
@@ -107,9 +118,9 @@ func QueryPageWithConfig[T any](
 	}
 
 	meta, err := pageBuilder.ScanPaginate(ctx, dest, PaginationOptions{
-		Page:       opts.Page,
-		PerPage:    opts.Limit,
-		OffsetMode: opts.OffsetMode,
+		Page:           opts.Page,
+		PerPage:        opts.Limit,
+		InMemoryOffset: queryPageInMemoryOffset(opts.InMemoryOffset),
 	})
 	if err != nil {
 		return EmptyPageData[T](opts.Page, opts.Limit), err
@@ -155,6 +166,10 @@ func applyQueryOptions(
 		return q, err
 	}
 
+	if err := applyInMemoryOffsetCursor(q, cfg.AllowedFields, opts); err != nil {
+		return q, err
+	}
+
 	for _, sort := range opts.Sort {
 		column, err := resolveAllowedColumn(cfg.AllowedFields, sort.Field)
 		if err != nil {
@@ -169,6 +184,53 @@ func applyQueryOptions(
 	}
 
 	return q, nil
+}
+
+func queryPageInMemoryOffset(opts *InMemoryOffsetOptions) *pagination.InMemoryOffsetOptions {
+	if opts == nil {
+		return nil
+	}
+
+	return &pagination.InMemoryOffsetOptions{
+		MaxLimit: opts.MaxLimit,
+	}
+}
+
+func applyInMemoryOffsetCursor(
+	q *QueryBuilder,
+	allowedFields map[string]string,
+	opts QueryOptions,
+) error {
+	if opts.InMemoryOffset == nil {
+		return nil
+	}
+
+	cursor := opts.InMemoryOffset.Cursor
+	if cursor.Field == "" || cursor.Value == nil {
+		return dictionary.ErrPaginationCursorRequired
+	}
+	if value, ok := cursor.Value.(string); ok && strings.TrimSpace(value) == "" {
+		return dictionary.ErrPaginationCursorRequired
+	}
+
+	column, err := resolveAllowedColumn(allowedFields, cursor.Field)
+	if err != nil {
+		return err
+	}
+
+	operator := query.OpGreaterThan
+	for _, sort := range opts.Sort {
+		if sort.Field != cursor.Field {
+			continue
+		}
+		if sort.Desc {
+			operator = query.OpLessThan
+		}
+		break
+	}
+
+	_, err = q.WhereOp(column, operator, cursor.Value)
+	return err
 }
 
 func applySearch(

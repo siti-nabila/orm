@@ -275,7 +275,7 @@ errors:
     code: 4067
     en: "orm: full-text operator requires a full-text search mode."
     id: "orm: operator full-text membutuhkan mode pencarian full-text."
-  err_invalid_pagination_offset_mode:
+  err_pagination_cursor_required:
     code: 4068
-    en: "orm: invalid pagination offset mode."
-    id: "orm: mode offset pagination tidak valid."
+    en: "orm: pagination cursor is required for in-memory offset."
+    id: "orm: cursor pagination wajib diisi untuk offset in-memory."

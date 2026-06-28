@@ -185,10 +185,11 @@ func TestDryRunScanPaginateInMemoryOffsetOmitsQueryOffset(t *testing.T) {
 	result, err := q.
 		OrderBy("users.id ASC").
 		DryRunScanPaginate(pagination.PaginationOptions{
-			Page:       3,
-			PerPage:    10,
-			MaxLimit:   100,
-			OffsetMode: pagination.OffsetModeInMemory,
+			Page:    3,
+			PerPage: 10,
+			InMemoryOffset: &pagination.InMemoryOffsetOptions{
+				MaxLimit: 100,
+			},
 		})
 	if err != nil {
 		t.Fatal(err)

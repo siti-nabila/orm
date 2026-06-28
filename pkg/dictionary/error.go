@@ -47,7 +47,7 @@ var (
 	ErrSearchFieldNotAllowed                error
 	ErrSearchModeNotAllowedForField         error
 	ErrFullTextOperatorRequiresFullTextMode error
-	ErrInvalidPaginationOffsetMode          error
+	ErrPaginationCursorRequired             error
 
 	// error bulk insert
 	ErrBulkInsertElemNil                    error
@@ -156,7 +156,7 @@ func init() {
 	ErrSearchFieldNotAllowed = errPack.New("err_search_field_not_allowed")
 	ErrSearchModeNotAllowedForField = errPack.New("err_search_mode_not_allowed_for_field")
 	ErrFullTextOperatorRequiresFullTextMode = errPack.New("err_full_text_operator_requires_full_text_mode")
-	ErrInvalidPaginationOffsetMode = errPack.New("err_invalid_pagination_offset_mode")
+	ErrPaginationCursorRequired = errPack.New("err_pagination_cursor_required")
 	// error bulk insert
 	// ErrBulkInsertElemNil = errPack.NewError("err_bulk_insert_elem_nil")
 	ErrBulkInsertElemNil = errPack.New("err_bulk_insert_element_nil")
