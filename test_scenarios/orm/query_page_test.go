@@ -573,11 +573,18 @@ func TestQueryPageInMemoryOffsetAppliesCursorAndBatchLimit(t *testing.T) {
 	}
 }
 
-func TestQueryPageInMemoryOffsetRequiresCursor(t *testing.T) {
-	fake := &queryPageORM{}
+func TestQueryPageInMemoryOffsetEmptyCursorOmitsCursorCondition(t *testing.T) {
+	fake := &queryPageORM{
+		total: 3,
+		rows: []queryPageUser{
+			{ID: 4, Name: "four"},
+			{ID: 5, Name: "five"},
+			{ID: 6, Name: "six"},
+		},
+	}
 	var users []queryPageUser
 
-	_, err := orm.QueryPageWithConfig(
+	pageData, err := orm.QueryPageWithConfig(
 		context.Background(),
 		query.New(fake).Table(queryPageUser{}),
 		&users,
@@ -585,13 +592,86 @@ func TestQueryPageInMemoryOffsetRequiresCursor(t *testing.T) {
 			AllowedFields: queryPageAllowedFields(),
 		},
 		orm.QueryOptions{
-			Page:           1,
-			Limit:          10,
-			InMemoryOffset: &orm.InMemoryOffsetOptions{MaxLimit: 100},
+			Page:  2,
+			Limit: 2,
+			InMemoryOffset: &orm.InMemoryOffsetOptions{
+				Cursor: orm.Cursor{
+					Field: "id",
+					Value: "",
+				},
+				MaxLimit: 10,
+			},
+			Sort: []orm.SortField{{Field: "id", Desc: true}},
 		},
 	)
-	if !queryPageSameError(err, dictionary.ErrPaginationCursorRequired) {
-		t.Fatalf("expected ErrPaginationCursorRequired, got %v", err)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !reflect.DeepEqual(pageData.Items, []queryPageUser{{ID: 6, Name: "six"}}) {
+		t.Fatalf("unexpected items: %+v", pageData.Items)
+	}
+	if pageData.NextCursor != "6" {
+		t.Fatalf("unexpected next cursor: %s", pageData.NextCursor)
+	}
+	if len(fake.calls) != 2 {
+		t.Fatalf("expected count and data query, got %+v", fake.calls)
+	}
+	for _, call := range fake.calls {
+		if strings.Contains(call.Query, "id <") || strings.Contains(call.Query, "id >") {
+			t.Fatalf("cursor condition should be omitted for empty cursor: %s", call.Query)
+		}
+		if len(call.Args) != 0 {
+			t.Fatalf("unexpected args: %+v", call.Args)
+		}
+	}
+	if !strings.Contains(fake.calls[1].Query, "ORDER BY id DESC") ||
+		!strings.HasSuffix(fake.calls[1].Query, " LIMIT 10") ||
+		strings.Contains(fake.calls[1].Query, "OFFSET") {
+		t.Fatalf("unexpected data query: %s", fake.calls[1].Query)
+	}
+}
+
+func TestQueryPageInMemoryOffsetRequiresCursor(t *testing.T) {
+	fake := &queryPageORM{}
+	var users []queryPageUser
+
+	tests := []struct {
+		name           string
+		inMemoryOffset *orm.InMemoryOffsetOptions
+	}{
+		{
+			name:           "empty cursor field",
+			inMemoryOffset: &orm.InMemoryOffsetOptions{MaxLimit: 100},
+		},
+		{
+			name: "nil cursor value",
+			inMemoryOffset: &orm.InMemoryOffsetOptions{
+				Cursor:   orm.Cursor{Field: "id"},
+				MaxLimit: 100,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := orm.QueryPageWithConfig(
+				context.Background(),
+				query.New(fake).Table(queryPageUser{}),
+				&users,
+				orm.QueryPageConfig{
+					AllowedFields: queryPageAllowedFields(),
+				},
+				orm.QueryOptions{
+					Page:           1,
+					Limit:          10,
+					InMemoryOffset: tt.inMemoryOffset,
+				},
+			)
+			if !queryPageSameError(err, dictionary.ErrPaginationCursorRequired) {
+				t.Fatalf("expected ErrPaginationCursorRequired, got %v", err)
+			}
+		})
 	}
 }
 

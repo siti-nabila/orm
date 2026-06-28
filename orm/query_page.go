@@ -211,7 +211,7 @@ func applyInMemoryOffsetCursor(
 		return dictionary.ErrPaginationCursorRequired
 	}
 	if value, ok := cursor.Value.(string); ok && strings.TrimSpace(value) == "" {
-		return dictionary.ErrPaginationCursorRequired
+		return nil
 	}
 
 	column, err := resolveAllowedColumn(allowedFields, cursor.Field)
