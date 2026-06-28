@@ -197,6 +197,40 @@ func TestBuildPageMeta(t *testing.T) {
 	}
 }
 
+func TestNormalizeOptionsOffsetMode(t *testing.T) {
+	defaultMode, err := pagination.NormalizeOptionsWithConfig(pagination.PaginationOptions{
+		Page:    1,
+		PerPage: 10,
+	}, pagination.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if defaultMode.OffsetMode != pagination.OffsetModeQuery {
+		t.Fatalf("unexpected default offset mode: %s", defaultMode.OffsetMode)
+	}
+
+	inMemory, err := pagination.NormalizeOptionsWithConfig(pagination.PaginationOptions{
+		Page:       1,
+		PerPage:    10,
+		OffsetMode: pagination.OffsetModeInMemory,
+	}, pagination.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if inMemory.OffsetMode != pagination.OffsetModeInMemory {
+		t.Fatalf("unexpected offset mode: %s", inMemory.OffsetMode)
+	}
+
+	_, err = pagination.NormalizeOptionsWithConfig(pagination.PaginationOptions{
+		Page:       1,
+		PerPage:    10,
+		OffsetMode: pagination.OffsetMode("invalid"),
+	}, pagination.Config{})
+	if !sameError(err, dictionary.ErrInvalidPaginationOffsetMode) {
+		t.Fatalf("expected ErrInvalidPaginationOffsetMode, got %v", err)
+	}
+}
+
 func TestSlicePaginatorPaginate(t *testing.T) {
 	type item struct {
 		ID    int

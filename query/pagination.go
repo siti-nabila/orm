@@ -94,7 +94,10 @@ func (b *QueryBuilder) ScanPaginate(ctx context.Context, dest any, opts paginati
 		return nil, err
 	}
 
-	pageBuilder := b.scanPaginateBuilder(opts)
+	pageBuilder, err := b.scanPaginateBuilder(opts)
+	if err != nil {
+		return nil, err
+	}
 	dataRes, err := pageBuilder.build()
 	if err != nil {
 		return nil, err
@@ -103,6 +106,7 @@ func (b *QueryBuilder) ScanPaginate(ctx context.Context, dest any, opts paginati
 	if err := b.orm.ScanQuery(scanCtx, dataRes.Query, dataRes.Args, dataRes.SelectedCols, dest); err != nil {
 		return nil, err
 	}
+	applyInMemoryPaginationOffset(dest, opts)
 
 	pageMeta := pagination.BuildPageMeta(opts, totalRows)
 	return &pageMeta, nil
@@ -123,7 +127,12 @@ func (b *QueryBuilder) DryRunScanPaginate(opts pagination.PaginationOptions) (bu
 		return builder.ScanPaginateDryRunResult{}, err
 	}
 
-	dataRes, err := b.scanPaginateBuilder(opts).build()
+	pageBuilder, err := b.scanPaginateBuilder(opts)
+	if err != nil {
+		return builder.ScanPaginateDryRunResult{}, err
+	}
+
+	dataRes, err := pageBuilder.build()
 	if err != nil {
 		return builder.ScanPaginateDryRunResult{}, err
 	}
@@ -189,14 +198,42 @@ func (b *QueryBuilder) paginationBuilder(params pagination.Params) *QueryBuilder
 	return pageBuilder
 }
 
-func (b *QueryBuilder) scanPaginateBuilder(opts pagination.PaginationOptions) *QueryBuilder {
+func (b *QueryBuilder) scanPaginateBuilder(opts pagination.PaginationOptions) (*QueryBuilder, error) {
 	pageBuilder := b.clone()
 	limit := opts.PerPage
 	offset := pagination.OptionsOffset(opts)
+
+	if opts.OffsetMode == pagination.OffsetModeInMemory {
+		limit = opts.MaxLimit
+		pageBuilder.limit = &limit
+		pageBuilder.offset = nil
+		pageBuilder.singleRow = false
+		return pageBuilder, nil
+	}
+
 	pageBuilder.limit = &limit
 	pageBuilder.offset = &offset
 	pageBuilder.singleRow = false
-	return pageBuilder
+	return pageBuilder, nil
+}
+
+func applyInMemoryPaginationOffset(dest any, opts pagination.PaginationOptions) {
+	if opts.OffsetMode != pagination.OffsetModeInMemory {
+		return
+	}
+
+	slice := reflect.ValueOf(dest).Elem()
+	offset := pagination.OptionsOffset(opts)
+	if offset >= slice.Len() {
+		slice.Set(reflect.MakeSlice(slice.Type(), 0, 0))
+		return
+	}
+
+	end := offset + opts.PerPage
+	if end > slice.Len() {
+		end = slice.Len()
+	}
+	slice.Set(slice.Slice(offset, end))
 }
 
 func validatePaginationDest(dest any) error {

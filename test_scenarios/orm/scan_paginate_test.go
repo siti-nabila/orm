@@ -238,6 +238,60 @@ func TestScanPaginateExecutesCountThenDataAndScansSlice(t *testing.T) {
 	}
 }
 
+func TestScanPaginateInMemoryOffsetScansAndSlicesPage(t *testing.T) {
+	state := &scanPaginateTestState{
+		totalRows: 5,
+		dataRows: [][]driver.Value{
+			{int64(1), "one"},
+			{int64(2), "two"},
+			{int64(3), "three"},
+			{int64(4), "four"},
+		},
+	}
+	conn := openScanPaginateDB(t, state)
+	db := orm.NewSqlQueryAdapter(context.Background(), conn, dialect.NewPostgres(), config.Config{})
+
+	var users []scanPaginateUser
+	q, err := db.UseModel(scanPaginateUser{}).
+		WhereOp("id", orm.OpGreaterThan, int64(100))
+	if err != nil {
+		t.Fatal(err)
+	}
+	pageMeta, err := q.OrderBy("id ASC").
+		ScanPaginate(context.Background(), &users, orm.PaginationOptions{
+			Page:       2,
+			PerPage:    2,
+			MaxLimit:   10,
+			OffsetMode: orm.OffsetModeInMemory,
+		})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !reflect.DeepEqual(users, []scanPaginateUser{
+		{ID: 3, Name: "three"},
+		{ID: 4, Name: "four"},
+	}) {
+		t.Fatalf("unexpected users: %+v", users)
+	}
+	if pageMeta.Total != 5 || pageMeta.TotalPages != 3 || !pageMeta.HasNext || !pageMeta.HasPrev {
+		t.Fatalf("unexpected page meta: %+v", pageMeta)
+	}
+
+	queries := state.snapshotQueries()
+	if len(queries) != 2 {
+		t.Fatalf("expected count and data query, got %+v", queries)
+	}
+	if !strings.Contains(queries[1].Query, "id > $1") ||
+		!strings.Contains(queries[1].Query, "ORDER BY id ASC") ||
+		!strings.HasSuffix(queries[1].Query, " LIMIT 10") {
+		t.Fatalf("unexpected data query: %s", queries[1].Query)
+	}
+	if strings.Contains(queries[1].Query, "OFFSET") {
+		t.Fatalf("data query should not contain OFFSET for in-memory offset: %s", queries[1].Query)
+	}
+}
+
 func TestScanPaginateUsesWrappedCountForComplexQuery(t *testing.T) {
 	state := &scanPaginateTestState{
 		totalRows: 1,

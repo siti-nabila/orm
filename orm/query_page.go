@@ -14,13 +14,14 @@ type (
 	QueryBuilder = query.QueryBuilder
 
 	QueryOptions struct {
-		Page      int
-		Limit     int
-		Sort      []SortField
-		Search    *SearchQuery
-		SearchAnd *SearchQueryAnd
-		Filters   []Filter
-		Select    []string
+		Page       int
+		Limit      int
+		OffsetMode OffsetMode
+		Sort       []SortField
+		Search     *SearchQuery
+		SearchAnd  *SearchQueryAnd
+		Filters    []Filter
+		Select     []string
 	}
 
 	SortField struct {
@@ -106,8 +107,9 @@ func QueryPageWithConfig[T any](
 	}
 
 	meta, err := pageBuilder.ScanPaginate(ctx, dest, PaginationOptions{
-		Page:    opts.Page,
-		PerPage: opts.Limit,
+		Page:       opts.Page,
+		PerPage:    opts.Limit,
+		OffsetMode: opts.OffsetMode,
 	})
 	if err != nil {
 		return EmptyPageData[T](opts.Page, opts.Limit), err
