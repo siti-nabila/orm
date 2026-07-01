@@ -33,13 +33,14 @@ rows is `0`, `TotalPages` is `0`, `HasNext` is `false`, and `HasPrev` is
 
 ```go
 type PageData[T any] struct {
-    Items      []T   `json:"items"`
-    Total      int64 `json:"total"`
-    Page       int   `json:"page"`
-    Limit      int   `json:"limit"`
-    TotalPages int   `json:"total_pages"`
-    HasNext    bool  `json:"has_next"`
-    HasPrev    bool  `json:"has_prev"`
+    Items      []T    `json:"items"`
+    Total      int64  `json:"total"`
+    Page       int    `json:"page"`
+    Limit      int    `json:"limit"`
+    TotalPages int    `json:"total_pages"`
+    HasNext    bool   `json:"has_next"`
+    HasPrev    bool   `json:"has_prev"`
+    NextCursor string `json:"next_cursor,omitempty"`
 }
 ```
 
@@ -63,7 +64,8 @@ Example response:
   "limit": 20,
   "total_pages": 3,
   "has_next": true,
-  "has_prev": false
+  "has_prev": false,
+  "next_cursor": "1"
 }
 ```
 
@@ -145,7 +147,7 @@ LIMIT n OFFSET m
 ```
 
 Use `InMemoryOffset` when the caller wants the database query to read a bounded
-cursor batch and apply `Page`/`PerPage` slicing in Go:
+cursor batch and then apply `Page`/`PerPage` slicing in Go:
 
 ```go
 var users []User
@@ -157,6 +159,7 @@ pageMeta, err := db.UseModel(User{}).
         Page:    2,
         PerPage: 20,
         InMemoryOffset: &orm.PaginationInMemoryOffsetOptions{
+            CursorField: "id",
             MaxLimit: 1000,
         },
     })
@@ -178,9 +181,16 @@ LIMIT 1000
 ```
 
 After scanning the batch, the ORM slices the result in memory using
-`Page`/`PerPage`. `NextCursor` is taken from the last row in the scanned batch,
-before in-memory slicing, so callers can send it as the cursor for the next
-batch.
+`Page`/`PerPage`. `NextCursor` is taken from the last row in the displayed page
+after in-memory slicing, so clients can send it as the cursor for the next
+request.
+
+Because `Page` still represents the displayed slice inside the current cursor
+batch, `HasPrev` follows the requested page metadata. For example, page `2`
+inside a 1000-row cursor batch has `has_prev: true`. Returning to page `1`
+does not require ORM-side caching; the caller can request page `1` again with
+the same cursor inputs and the ORM will query the batch again, then slice the
+first page.
 
 For `QueryPageWithConfig`, use `QueryOptions.InMemoryOffset`. This option keeps
 the cursor grouped under the in-memory mode, so normal query pagination does not
@@ -206,8 +216,8 @@ adds `> cursor`, and for descending sort it adds `< cursor`. For the first
 batch, set `Cursor.Value` to an empty string; the ORM keeps in-memory offset
 mode but omits the cursor predicate. If `InMemoryOffset` is set with an empty
 `Cursor.Field` or nil `Cursor.Value`, `QueryPageWithConfig` returns a dictionary
-error. `PageData.NextCursor` is filled from the same cursor field and is encoded
-as `next_cursor` in JSON responses.
+error. `PageData.NextCursor` is filled from the same cursor field after
+in-memory slicing and is encoded as `next_cursor` in JSON responses.
 
 ### PostgreSQL Full Text Profile Search
 
@@ -404,13 +414,14 @@ not be accepted.
 
 ```go
 type QueryOptions struct {
-    Page      int
-    Limit     int
-    Sort      []SortField
-    Search    *SearchQuery
-    SearchAnd *SearchQueryAnd
-    Filters   []Filter
-    Select    []string
+    Page           int
+    Limit          int
+    InMemoryOffset *InMemoryOffsetOptions
+    Sort           []SortField
+    Search         *SearchQuery
+    SearchAnd      *SearchQueryAnd
+    Filters        []Filter
+    Select         []string
 }
 
 type SortField struct {

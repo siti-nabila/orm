@@ -626,6 +626,98 @@ func (x *Filter) GetValues() []string {
 	return nil
 }
 
+type QueryPageResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Page          uint32                 `protobuf:"varint,1,opt,name=page,proto3" json:"page,omitempty"`
+	Limit         uint32                 `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
+	Total         int64                  `protobuf:"varint,3,opt,name=total,proto3" json:"total,omitempty"`
+	TotalPages    uint32                 `protobuf:"varint,4,opt,name=total_pages,json=totalPages,proto3" json:"total_pages,omitempty"`
+	HasNext       bool                   `protobuf:"varint,5,opt,name=has_next,json=hasNext,proto3" json:"has_next,omitempty"`
+	HasPrev       bool                   `protobuf:"varint,6,opt,name=has_prev,json=hasPrev,proto3" json:"has_prev,omitempty"`
+	NextCursor    string                 `protobuf:"bytes,7,opt,name=next_cursor,json=nextCursor,proto3" json:"next_cursor,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *QueryPageResponse) Reset() {
+	*x = QueryPageResponse{}
+	mi := &file_proto_paginator_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *QueryPageResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*QueryPageResponse) ProtoMessage() {}
+
+func (x *QueryPageResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_paginator_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use QueryPageResponse.ProtoReflect.Descriptor instead.
+func (*QueryPageResponse) Descriptor() ([]byte, []int) {
+	return file_proto_paginator_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *QueryPageResponse) GetPage() uint32 {
+	if x != nil {
+		return x.Page
+	}
+	return 0
+}
+
+func (x *QueryPageResponse) GetLimit() uint32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+func (x *QueryPageResponse) GetTotal() int64 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
+func (x *QueryPageResponse) GetTotalPages() uint32 {
+	if x != nil {
+		return x.TotalPages
+	}
+	return 0
+}
+
+func (x *QueryPageResponse) GetHasNext() bool {
+	if x != nil {
+		return x.HasNext
+	}
+	return false
+}
+
+func (x *QueryPageResponse) GetHasPrev() bool {
+	if x != nil {
+		return x.HasPrev
+	}
+	return false
+}
+
+func (x *QueryPageResponse) GetNextCursor() string {
+	if x != nil {
+		return x.NextCursor
+	}
+	return ""
+}
+
 var File_proto_paginator_proto protoreflect.FileDescriptor
 
 const file_proto_paginator_proto_rawDesc = "" +
@@ -663,7 +755,17 @@ const file_proto_paginator_proto_rawDesc = "" +
 	"\x05field\x18\x01 \x01(\tR\x05field\x122\n" +
 	"\boperator\x18\x02 \x01(\x0e2\x16.orm.v1.FilterOperatorR\boperator\x12\x14\n" +
 	"\x05value\x18\x03 \x01(\tR\x05value\x12\x16\n" +
-	"\x06values\x18\x04 \x03(\tR\x06values*\xb2\x01\n" +
+	"\x06values\x18\x04 \x03(\tR\x06values\"\xcb\x01\n" +
+	"\x11QueryPageResponse\x12\x12\n" +
+	"\x04page\x18\x01 \x01(\rR\x04page\x12\x14\n" +
+	"\x05limit\x18\x02 \x01(\rR\x05limit\x12\x14\n" +
+	"\x05total\x18\x03 \x01(\x03R\x05total\x12\x1f\n" +
+	"\vtotal_pages\x18\x04 \x01(\rR\n" +
+	"totalPages\x12\x19\n" +
+	"\bhas_next\x18\x05 \x01(\bR\ahasNext\x12\x19\n" +
+	"\bhas_prev\x18\x06 \x01(\bR\ahasPrev\x12\x1f\n" +
+	"\vnext_cursor\x18\a \x01(\tR\n" +
+	"nextCursor*\xb2\x01\n" +
 	"\n" +
 	"SearchMode\x12\x1b\n" +
 	"\x17SEARCH_MODE_UNSPECIFIED\x10\x00\x12\x18\n" +
@@ -696,7 +798,7 @@ func file_proto_paginator_proto_rawDescGZIP() []byte {
 }
 
 var file_proto_paginator_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_proto_paginator_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_proto_paginator_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_proto_paginator_proto_goTypes = []any{
 	(SearchMode)(0),               // 0: orm.v1.SearchMode
 	(FilterOperator)(0),           // 1: orm.v1.FilterOperator
@@ -708,6 +810,7 @@ var file_proto_paginator_proto_goTypes = []any{
 	(*SearchField)(nil),           // 7: orm.v1.SearchField
 	(*SearchQueryAnd)(nil),        // 8: orm.v1.SearchQueryAnd
 	(*Filter)(nil),                // 9: orm.v1.Filter
+	(*QueryPageResponse)(nil),     // 10: orm.v1.QueryPageResponse
 }
 var file_proto_paginator_proto_depIdxs = []int32{
 	3, // 0: orm.v1.QueryOptions.sort:type_name -> orm.v1.SortField
@@ -737,7 +840,7 @@ func file_proto_paginator_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_paginator_proto_rawDesc), len(file_proto_paginator_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   8,
+			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

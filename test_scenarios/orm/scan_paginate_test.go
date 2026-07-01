@@ -238,7 +238,7 @@ func TestScanPaginateExecutesCountThenDataAndScansSlice(t *testing.T) {
 	}
 }
 
-func TestScanPaginateInMemoryOffsetScansAndSlicesPage(t *testing.T) {
+func TestScanPaginateInMemoryOffsetScansBatchAndSlicesPage(t *testing.T) {
 	state := &scanPaginateTestState{
 		totalRows: 5,
 		dataRows: [][]driver.Value{

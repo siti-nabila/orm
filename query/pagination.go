@@ -108,8 +108,8 @@ func (b *QueryBuilder) ScanPaginate(ctx context.Context, dest any, opts paginati
 	if err := b.orm.ScanQuery(scanCtx, dataRes.Query, dataRes.Args, dataRes.SelectedCols, dest); err != nil {
 		return nil, err
 	}
-	nextCursor := extractInMemoryNextCursor(dest, opts)
 	applyInMemoryPaginationOffset(dest, opts)
+	nextCursor := extractInMemoryNextCursor(dest, opts)
 
 	pageMeta := pagination.BuildPageMeta(opts, totalRows)
 	pageMeta.NextCursor = nextCursor

@@ -549,8 +549,13 @@ func TestQueryPageInMemoryOffsetAppliesCursorAndBatchLimit(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !reflect.DeepEqual(pageData.Items, []queryPageUser{{ID: 6, Name: "six"}}) {
+	if !reflect.DeepEqual(pageData.Items, []queryPageUser{
+		{ID: 6, Name: "six"},
+	}) {
 		t.Fatalf("unexpected items: %+v", pageData.Items)
+	}
+	if pageData.Page != 2 || pageData.Limit != 2 {
+		t.Fatalf("unexpected page metadata: %+v", pageData)
 	}
 	if pageData.NextCursor != "6" {
 		t.Fatalf("unexpected next cursor: %s", pageData.NextCursor)
@@ -573,7 +578,7 @@ func TestQueryPageInMemoryOffsetAppliesCursorAndBatchLimit(t *testing.T) {
 	}
 }
 
-func TestQueryPageInMemoryOffsetEmptyCursorOmitsCursorCondition(t *testing.T) {
+func TestQueryPageInMemoryOffsetNextCursorUsesDisplayedPage(t *testing.T) {
 	fake := &queryPageORM{
 		total: 3,
 		rows: []queryPageUser{
@@ -592,41 +597,180 @@ func TestQueryPageInMemoryOffsetEmptyCursorOmitsCursorCondition(t *testing.T) {
 			AllowedFields: queryPageAllowedFields(),
 		},
 		orm.QueryOptions{
-			Page:  2,
+			Page:  1,
 			Limit: 2,
 			InMemoryOffset: &orm.InMemoryOffsetOptions{
 				Cursor: orm.Cursor{
 					Field: "id",
-					Value: "",
+					Value: int64(100),
 				},
 				MaxLimit: 10,
 			},
-			Sort: []orm.SortField{{Field: "id", Desc: true}},
+			Sort: []orm.SortField{{Field: "id"}},
 		},
 	)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if !reflect.DeepEqual(pageData.Items, []queryPageUser{{ID: 6, Name: "six"}}) {
+	if !reflect.DeepEqual(pageData.Items, []queryPageUser{
+		{ID: 4, Name: "four"},
+		{ID: 5, Name: "five"},
+	}) {
 		t.Fatalf("unexpected items: %+v", pageData.Items)
 	}
-	if pageData.NextCursor != "6" {
+	if pageData.NextCursor != "5" {
+		t.Fatalf("next cursor should come from displayed page, got %s", pageData.NextCursor)
+	}
+	if len(fake.calls) != 2 {
+		t.Fatalf("expected count and data query, got %+v", fake.calls)
+	}
+	if !strings.HasSuffix(fake.calls[1].Query, " LIMIT 10") ||
+		strings.Contains(fake.calls[1].Query, "OFFSET") {
+		t.Fatalf("unexpected data query: %s", fake.calls[1].Query)
+	}
+}
+
+func TestQueryPageInMemoryOffsetEmptyCursorPagesMoveWithinBatch(t *testing.T) {
+	rows := make([]queryPageUser, 20)
+	for i := range rows {
+		rows[i] = queryPageUser{
+			ID:   int64(i + 1),
+			Name: "user",
+		}
+	}
+	fake := &queryPageORM{
+		total: 1000,
+		rows:  rows,
+	}
+
+	var firstPage []queryPageUser
+	pageOne, err := orm.QueryPageWithConfig(
+		context.Background(),
+		query.New(fake).Table(queryPageUser{}),
+		&firstPage,
+		orm.QueryPageConfig{
+			AllowedFields: queryPageAllowedFields(),
+		},
+		orm.QueryOptions{
+			Page:  1,
+			Limit: 10,
+			InMemoryOffset: &orm.InMemoryOffsetOptions{
+				Cursor: orm.Cursor{
+					Field: "id",
+					Value: "",
+				},
+				MaxLimit: 1000,
+			},
+			Sort: []orm.SortField{{Field: "id"}},
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var secondPage []queryPageUser
+	pageTwo, err := orm.QueryPageWithConfig(
+		context.Background(),
+		query.New(fake).Table(queryPageUser{}),
+		&secondPage,
+		orm.QueryPageConfig{
+			AllowedFields: queryPageAllowedFields(),
+		},
+		orm.QueryOptions{
+			Page:  2,
+			Limit: 10,
+			InMemoryOffset: &orm.InMemoryOffsetOptions{
+				Cursor: orm.Cursor{
+					Field: "id",
+					Value: "",
+				},
+				MaxLimit: 1000,
+			},
+			Sort: []orm.SortField{{Field: "id"}},
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if firstPage[0].ID != 1 || firstPage[9].ID != 10 || pageOne.NextCursor != "10" || pageOne.HasPrev {
+		t.Fatalf("unexpected first page: data=%+v meta=%+v", firstPage, pageOne)
+	}
+	if secondPage[0].ID != 11 || secondPage[9].ID != 20 || pageTwo.NextCursor != "20" || !pageTwo.HasPrev {
+		t.Fatalf("unexpected second page: data=%+v meta=%+v", secondPage, pageTwo)
+	}
+	if len(fake.calls) != 4 {
+		t.Fatalf("expected each page request to query count and data, got %+v", fake.calls)
+	}
+	for _, idx := range []int{1, 3} {
+		if !strings.Contains(fake.calls[idx].Query, "ORDER BY id ASC") ||
+			!strings.HasSuffix(fake.calls[idx].Query, " LIMIT 1000") ||
+			strings.Contains(fake.calls[idx].Query, "OFFSET") {
+			t.Fatalf("unexpected data query: %s", fake.calls[idx].Query)
+		}
+	}
+}
+
+func TestQueryPageInMemoryOffsetDescendingCursorUsesBatchLimit(t *testing.T) {
+	fake := &queryPageORM{
+		total: 3,
+		rows: []queryPageProfileSearchRow{
+			{AuthID: 38, Email: "thirty-eight@example.com"},
+			{AuthID: 37, Email: "thirty-seven@example.com"},
+			{AuthID: 36, Email: "thirty-six@example.com"},
+		},
+	}
+	var users []queryPageProfileSearchRow
+
+	pageData, err := orm.QueryPageWithConfig(
+		context.Background(),
+		query.New(fake).Table(queryPageProfileSearchRow{}),
+		&users,
+		orm.QueryPageConfig{
+			AllowedFields: map[string]string{
+				"auth_id": "auth_id",
+			},
+		},
+		orm.QueryOptions{
+			Page:  1,
+			Limit: 2,
+			InMemoryOffset: &orm.InMemoryOffsetOptions{
+				Cursor: orm.Cursor{
+					Field: "auth_id",
+					Value: "39",
+				},
+				MaxLimit: 1000,
+			},
+			Sort: []orm.SortField{{Field: "auth_id", Desc: true}},
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !reflect.DeepEqual(pageData.Items, []queryPageProfileSearchRow{
+		{AuthID: 38, Email: "thirty-eight@example.com"},
+		{AuthID: 37, Email: "thirty-seven@example.com"},
+	}) {
+		t.Fatalf("unexpected items: %+v", pageData.Items)
+	}
+	if pageData.NextCursor != "37" {
 		t.Fatalf("unexpected next cursor: %s", pageData.NextCursor)
 	}
 	if len(fake.calls) != 2 {
 		t.Fatalf("expected count and data query, got %+v", fake.calls)
 	}
 	for _, call := range fake.calls {
-		if strings.Contains(call.Query, "id <") || strings.Contains(call.Query, "id >") {
-			t.Fatalf("cursor condition should be omitted for empty cursor: %s", call.Query)
+		if !strings.Contains(call.Query, "auth_id < $1") {
+			t.Fatalf("missing descending cursor condition: %s", call.Query)
 		}
-		if len(call.Args) != 0 {
+		if !reflect.DeepEqual(call.Args, []any{"39"}) {
 			t.Fatalf("unexpected args: %+v", call.Args)
 		}
 	}
-	if !strings.Contains(fake.calls[1].Query, "ORDER BY id DESC") ||
-		!strings.HasSuffix(fake.calls[1].Query, " LIMIT 10") ||
+	if !strings.Contains(fake.calls[1].Query, "ORDER BY auth_id DESC") ||
+		!strings.HasSuffix(fake.calls[1].Query, " LIMIT 1000") ||
 		strings.Contains(fake.calls[1].Query, "OFFSET") {
 		t.Fatalf("unexpected data query: %s", fake.calls[1].Query)
 	}

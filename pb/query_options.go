@@ -88,6 +88,18 @@ func QueryOptionsFromProto(in *QueryOptions) (orm.QueryOptions, error) {
 	return out, nil
 }
 
+func QueryPageResponseFromPageData[T any](in orm.PageData[T]) *QueryPageResponse {
+	return &QueryPageResponse{
+		Page:       uint32(in.Page),
+		Limit:      uint32(in.Limit),
+		Total:      in.Total,
+		TotalPages: uint32(in.TotalPages),
+		HasNext:    in.HasNext,
+		HasPrev:    in.HasPrev,
+		NextCursor: in.NextCursor,
+	}
+}
+
 func (in *QueryOptions) ToORM() (orm.QueryOptions, error) {
 	return QueryOptionsFromProto(in)
 }
