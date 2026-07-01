@@ -62,6 +62,16 @@ message Filter {
   repeated string values = 4;
 }
 
+message QueryPageResponse {
+  uint32 page = 1;
+  uint32 limit = 2;
+  int64 total = 3;
+  uint32 total_pages = 4;
+  bool has_next = 5;
+  bool has_prev = 6;
+  string next_cursor = 7;
+}
+
 enum FilterOperator {
   FILTER_OPERATOR_UNSPECIFIED = 0;
   FILTER_OPERATOR_EQUAL = 1;

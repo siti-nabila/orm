@@ -95,6 +95,29 @@ func TestQueryOptionsFromProto(t *testing.T) {
 	}
 }
 
+func TestQueryPageResponseFromPageDataIncludesNextCursor(t *testing.T) {
+	got := ormpb.QueryPageResponseFromPageData(orm.PageData[string]{
+		Items:      []string{"first", "second"},
+		Total:      10,
+		Page:       2,
+		Limit:      2,
+		TotalPages: 5,
+		HasNext:    true,
+		HasPrev:    true,
+		NextCursor: "37",
+	})
+
+	if got.GetPage() != 2 ||
+		got.GetLimit() != 2 ||
+		got.GetTotal() != 10 ||
+		got.GetTotalPages() != 5 ||
+		!got.GetHasNext() ||
+		!got.GetHasPrev() ||
+		got.GetNextCursor() != "37" {
+		t.Fatalf("unexpected query page response: %+v", got)
+	}
+}
+
 func TestQueryOptionsFromProtoRejectsInvalidFilterOperator(t *testing.T) {
 	_, err := ormpb.QueryOptionsFromProto(&ormpb.QueryOptions{
 		Filters: []*ormpb.Filter{
