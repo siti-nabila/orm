@@ -39,6 +39,7 @@ nav:
   - Create, Update, and Bulk Writes: create-update.md
   - Scanning Results: scan.md
   - Pagination: pagination.md
+  - Full Text Trigram: full-text-trigram.md
   - Dry Run: dry-run.md
   - Transactions and Locking: transactions.md
   - Dialect Notes: dialects.md

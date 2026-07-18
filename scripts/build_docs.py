@@ -22,6 +22,7 @@ PUBLIC_DOCS = (
     "create-update",
     "scan",
     "pagination",
+    "full-text-trigram",
     "dry-run",
     "transactions",
     "dialects",
