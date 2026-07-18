@@ -1,0 +1,30 @@
+INHERIT: mkdocs.base.yml
+
+site_name: Dokumentasi ORM
+site_url: https://siti-nabila.github.io/orm/id/
+docs_dir: .docs-build/id
+site_dir: site/id
+
+theme:
+  language: id
+
+extra:
+  alternate:
+    - name: Bahasa Indonesia
+      link: /orm/id/
+      lang: id
+    - name: English
+      link: /orm/en/
+      lang: en
+
+nav:
+  - Beranda: index.md
+  - Memulai: getting-started.md
+  - Query Builder: query-builder.md
+  - Create, Update, dan Penulisan Massal: create-update.md
+  - Memindai Hasil: scan.md
+  - Paginasi: pagination.md
+  - Dry Run: dry-run.md
+  - Transaksi dan Penguncian: transactions.md
+  - Catatan Dialek: dialects.md
+  - Contoh: examples.md
