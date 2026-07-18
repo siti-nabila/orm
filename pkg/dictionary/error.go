@@ -48,6 +48,10 @@ var (
 	ErrSearchModeNotAllowedForField         error
 	ErrFullTextOperatorRequiresFullTextMode error
 	ErrPaginationCursorRequired             error
+	ErrWhereValueNil                        error
+	ErrUpdateWithoutWhere                   error
+	ErrUpdateWhereFieldConflict             error
+	ErrUpdateExecutorUnsupported            error
 
 	// error bulk insert
 	ErrBulkInsertElemNil                    error
@@ -157,6 +161,10 @@ func init() {
 	ErrSearchModeNotAllowedForField = errPack.New("err_search_mode_not_allowed_for_field")
 	ErrFullTextOperatorRequiresFullTextMode = errPack.New("err_full_text_operator_requires_full_text_mode")
 	ErrPaginationCursorRequired = errPack.New("err_pagination_cursor_required")
+	ErrWhereValueNil = errPack.New("err_where_value_nil")
+	ErrUpdateWithoutWhere = errPack.New("err_update_without_where")
+	ErrUpdateWhereFieldConflict = errPack.New("err_update_where_field_conflict")
+	ErrUpdateExecutorUnsupported = errPack.New("err_update_executor_unsupported")
 	// error bulk insert
 	// ErrBulkInsertElemNil = errPack.NewError("err_bulk_insert_elem_nil")
 	ErrBulkInsertElemNil = errPack.New("err_bulk_insert_element_nil")

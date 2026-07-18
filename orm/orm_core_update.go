@@ -2,6 +2,7 @@ package orm
 
 import (
 	"context"
+	"database/sql"
 	"reflect"
 	"time"
 
@@ -11,6 +12,25 @@ import (
 	"github.com/siti-nabila/orm/pkg/dictionary"
 	normalizeerr "github.com/siti-nabila/orm/pkg/normalize_err"
 )
+
+func (o *ORM) ExecUpdateQuery(ctx context.Context, result builder.UpdateQueryResult) (res sql.Result, err error) {
+	if result.Query == "" {
+		return nil, dictionary.ErrDBQueryEmpty
+	}
+
+	start := time.Now()
+	d := o.Dialect()
+	defer func() {
+		o.log(result.Query, d, result.PlaceholderCols, result.Args, builder.DryRunModeExec, start, err)
+	}()
+
+	res, err = o.executor.ExecContext(ctx, result.Query, result.Args...)
+	if err != nil {
+		err = normalizeerr.Normalize(d.Name(), err)
+		return nil, err
+	}
+	return res, nil
+}
 
 func (o *ORM) Update(ctx context.Context, v any, fields ...map[string]any) error {
 	var (

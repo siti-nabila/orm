@@ -155,6 +155,40 @@ err := tx.Update(&user, map[string]any{
 })
 ```
 
+An update-only struct can use `where` tags when it has no primary key:
+
+```go
+type UpdateApprovalLogFlag struct {
+    ReferenceID string `sql:"column:reference_id;where"`
+    Flag        int    `sql:"column:flag"`
+}
+
+func (UpdateApprovalLogFlag) TableName() string {
+    return "invoice_approval_logs"
+}
+
+req := &UpdateApprovalLogFlag{ReferenceID: "INV-001", Flag: 0}
+err := tx.Update(req)
+```
+
+Transaction-scoped chaining is also available without an update map:
+
+```go
+result, err := tx.UseModel(req).
+    Where("reference_id = ?", req.ReferenceID).
+    Updates()
+
+dryRun, err := tx.UseModel(req).
+    Where("reference_id = ?", req.ReferenceID).
+    DryRunUpdates()
+```
+
+`Updates()` includes every SQL-tagged column in `SET`, including zero values, except
+columns tagged `primaryKey` or `where`. Prefer a small update-specific struct so an
+entity's unrelated zero-value fields are not updated accidentally. An explicit
+chained condition is the sole `WHERE` source; without one, primary key is preferred
+and tagged `where` columns are the fallback. Updates without a `WHERE` are rejected.
+
 ---
 
 ## 🔒 TRANSACTION LOCKING (Non-Blocking)

@@ -9,6 +9,7 @@ import (
 	"github.com/siti-nabila/orm/lock"
 	"github.com/siti-nabila/orm/pkg/dictionary"
 	"github.com/siti-nabila/orm/pkg/logger"
+	"github.com/siti-nabila/orm/query"
 )
 
 const (
@@ -22,6 +23,10 @@ func (s *SqlTransactionAdapter) Create(v any) error {
 
 func (s *SqlTransactionAdapter) Update(v any, fields ...map[string]any) error {
 	return s.orm.Update(s.ctx, v, fields...)
+}
+
+func (s *SqlTransactionAdapter) UseModel(model any) *query.QueryBuilder {
+	return s.orm.Q().WithContext(s.ctx).Table(model)
 }
 
 func (s *SqlTransactionAdapter) Commit() error {

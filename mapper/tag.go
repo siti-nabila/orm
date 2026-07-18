@@ -15,6 +15,7 @@ func parseSQLTag(f reflect.StructField, useSnake bool) (ColumnMeta, bool) {
 	}
 
 	col := ColumnMeta{}
+	col.SQLTagged = tag != ""
 
 	// no tag -> default
 	if tag == "" {
@@ -40,6 +41,11 @@ func parseSQLTag(f reflect.StructField, useSnake bool) (ColumnMeta, bool) {
 
 		if p == "primaryKey" {
 			col.PrimaryKey = true
+			continue
+		}
+
+		if p == "where" {
+			col.Where = true
 			continue
 		}
 

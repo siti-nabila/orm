@@ -1,7 +1,9 @@
 package logger
 
 import (
+	"database/sql/driver"
 	"fmt"
+	"reflect"
 	"strings"
 	"time"
 
@@ -95,6 +97,7 @@ func interpolateNamed(
 }
 
 func formatValue(v any) string {
+	v = normalizeLogValue(v)
 	switch val := v.(type) {
 
 	case nil:
@@ -139,6 +142,53 @@ func formatValue(v any) string {
 	}
 }
 
+func normalizeLogValue(v any) any {
+	if v == nil {
+		return nil
+	}
+
+	if val, ok := driverValue(v); ok {
+		return val
+	}
+
+	rv := reflect.ValueOf(v)
+	if !rv.IsValid() {
+		return nil
+	}
+
+	for rv.Kind() == reflect.Interface || rv.Kind() == reflect.Ptr {
+		if rv.IsNil() {
+			return nil
+		}
+
+		rv = rv.Elem()
+		if rv.CanInterface() {
+			if val, ok := driverValue(rv.Interface()); ok {
+				return val
+			}
+		}
+	}
+
+	if !rv.CanInterface() {
+		return v
+	}
+
+	return rv.Interface()
+}
+
+func driverValue(v any) (any, bool) {
+	valuer, ok := v.(driver.Valuer)
+	if !ok {
+		return nil, false
+	}
+
+	val, err := valuer.Value()
+	if err != nil {
+		return nil, false
+	}
+
+	return val, true
+}
 func joinQuoted(strs []string) string {
 	out := make([]string, len(strs))
 	for i, s := range strs {

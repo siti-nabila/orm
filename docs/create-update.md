@@ -52,6 +52,107 @@ err := tx.Update(&user, map[string]any{
 
 The map keys are column names.
 
+### Update Models Without A Primary Key
+
+An update-specific model can mark one or more columns as update conditions with
+the `where` tag. This is useful for tables or write models that do not expose a
+primary key.
+
+```go
+type ApprovalLogUpdate struct {
+    CompanyID   uint64 `sql:"column:company_id;where"`
+    ReferenceID string `sql:"column:reference_id;where"`
+    Flag        int    `sql:"column:flag"`
+}
+
+func (ApprovalLogUpdate) TableName() string {
+    return "invoice_approval_logs"
+}
+
+update := &ApprovalLogUpdate{
+    CompanyID:   7,
+    ReferenceID: "INV-001",
+    Flag:        0,
+}
+
+if err := tx.Update(update); err != nil {
+    tx.Rollback()
+    return err
+}
+```
+
+The generated condition combines all tagged columns with `AND`:
+
+```sql
+UPDATE invoice_approval_logs
+SET flag = $1
+WHERE company_id = $2 AND reference_id = $3
+```
+
+The args remain parameterized and ordered as:
+
+```go
+[]any{0, uint64(7), "INV-001"}
+```
+
+If a model contains a `primaryKey`, the primary key remains the condition source
+for `Update`; tagged `where` columns are only the fallback when no primary key is
+defined. A nil pointer used by a tagged condition is rejected. Scalar zero
+values such as `0`, `false`, and `""` remain valid condition values, so callers
+must set them intentionally.
+
+When passing an update map, a tagged `where` column cannot also be updated:
+
+```go
+// Rejected because reference_id is part of the update condition.
+err := tx.Update(update, map[string]any{
+    "reference_id": "INV-002",
+})
+```
+
+### Chained Model Updates
+
+`UseModel` is available on the transaction adapter for update chaining. The
+model must be a non-nil pointer to a struct.
+
+```go
+result, err := tx.
+    UseModel(update).
+    Where("tenant_id = ?", tenantID).
+    Updates()
+if err != nil {
+    tx.Rollback()
+    return err
+}
+
+rows, err := result.RowsAffected()
+```
+
+`Updates()` includes every field with an explicit `sql` tag in `SET`, including
+zero values, except fields tagged `primaryKey` or `where`. Prefer a small,
+update-specific struct so unrelated zero-value fields are not written.
+
+The condition rules are:
+
+1. An explicit chained condition (`Where`, `OrWhere`, `WhereIn`, grouped
+   conditions, and their variants) is the complete `WHERE` source.
+2. Without an explicit condition, a non-zero primary key is used.
+3. Without a primary key, tagged `where` columns are used.
+4. An update with no condition is rejected.
+
+Explicit conditions are not automatically combined with the primary key or
+tagged conditions. Include every required tenant or ownership constraint in the
+chain.
+
+The behavior is shared by PostgreSQL, MySQL, and Oracle. Existing placeholder
+and identifier-quoting configuration remains in effect.
+
+### Update Logging
+
+Update query logging dereferences scalar pointers before interpolation and uses
+`database/sql/driver.Valuer` values when available. This only changes rendered
+log values; the original query and args sent to the database are unchanged.
+
 ## Advanced Insert: CreateWith
 
 `CreateWith` returns a `CreateCommand` for returning columns and conflict

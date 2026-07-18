@@ -29,12 +29,40 @@ return tx.Commit()
 - `UpdateBulk`
 - `DryRunUpdateBulk`
 - `CreateWith`
+- `UseModel`
 - `TryLock`
 - `Commit`
 - `Rollback`
 - `SetLogger`
 
 `Commit` and `Rollback` release acquired locks before ending the transaction.
+
+`UseModel` keeps the transaction context and executor while exposing the query
+builder. It can be used for chained model updates:
+
+```go
+result, err := tx.
+    UseModel(&ApprovalLogUpdate{
+        CompanyID:   7,
+        ReferenceID: "INV-001",
+        Flag:        0,
+    }).
+    Updates()
+if err != nil {
+    tx.Rollback()
+    return err
+}
+
+if _, err := result.RowsAffected(); err != nil {
+    tx.Rollback()
+    return err
+}
+
+return tx.Commit()
+```
+
+`Updates` does not commit or roll back automatically. Transaction ownership
+remains with the caller.
 
 ## Advisory Locks
 

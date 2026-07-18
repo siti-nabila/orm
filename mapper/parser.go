@@ -43,6 +43,8 @@ func Parse(v any, useSnake bool) (*Meta, error) {
 			Name:       cachedCol.Name,
 			Value:      fVal.Interface(),
 			PrimaryKey: cachedCol.PrimaryKey,
+			Where:      cachedCol.Where,
+			SQLTagged:  cachedCol.SQLTagged,
 			FieldSrc:   fVal,
 		})
 	}
@@ -114,6 +116,8 @@ func parseCachedMeta(modelType reflect.Type, useSnake bool) (*cachedMeta, error)
 		meta.Columns = append(meta.Columns, cachedColumnMeta{
 			Name:       col.Name,
 			PrimaryKey: col.PrimaryKey,
+			Where:      col.Where,
+			SQLTagged:  col.SQLTagged,
 			Index:      sf.Index,
 		})
 		meta.ColumnIndex[col.Name] = colIdx
