@@ -59,20 +59,20 @@ the `where` tag. This is useful for tables or write models that do not expose a
 primary key.
 
 ```go
-type ApprovalLogUpdate struct {
-    CompanyID   uint64 `sql:"column:company_id;where"`
-    ReferenceID string `sql:"column:reference_id;where"`
-    Flag        int    `sql:"column:flag"`
+type ProfileUpdate struct {
+    TenantID    uint64 `sql:"column:tenant_id;where"`
+    UserID      uint64 `sql:"column:user_id;where"`
+    DisplayName string `sql:"column:display_name"`
 }
 
-func (ApprovalLogUpdate) TableName() string {
-    return "invoice_approval_logs"
+func (ProfileUpdate) TableName() string {
+    return "user_profiles"
 }
 
-update := &ApprovalLogUpdate{
-    CompanyID:   7,
-    ReferenceID: "INV-001",
-    Flag:        0,
+update := &ProfileUpdate{
+    TenantID:    7,
+    UserID:      42,
+    DisplayName: "Nabila",
 }
 
 if err := tx.Update(update); err != nil {
@@ -84,15 +84,15 @@ if err := tx.Update(update); err != nil {
 The generated condition combines all tagged columns with `AND`:
 
 ```sql
-UPDATE invoice_approval_logs
-SET flag = $1
-WHERE company_id = $2 AND reference_id = $3
+UPDATE user_profiles
+SET display_name = $1
+WHERE tenant_id = $2 AND user_id = $3
 ```
 
 The args remain parameterized and ordered as:
 
 ```go
-[]any{0, uint64(7), "INV-001"}
+[]any{"Nabila", uint64(7), uint64(42)}
 ```
 
 If a model contains a `primaryKey`, the primary key remains the condition source
@@ -104,9 +104,9 @@ must set them intentionally.
 When passing an update map, a tagged `where` column cannot also be updated:
 
 ```go
-// Rejected because reference_id is part of the update condition.
+// Rejected because user_id is part of the update condition.
 err := tx.Update(update, map[string]any{
-    "reference_id": "INV-002",
+    "user_id": uint64(84),
 })
 ```
 

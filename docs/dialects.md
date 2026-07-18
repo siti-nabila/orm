@@ -69,7 +69,7 @@ raw `?` condition placeholders aligned with each dialect.
 ## Logged Values
 
 The default logger renders PostgreSQL slices and arrays as `ARRAY[...]`. MySQL
-and Oracle retain parenthesized collection rendering. Long scalar and collection
+and Oracle retain parenthesized slice rendering. Long scalar, slice, and array
 values are limited to 120 bytes with `...(truncated)...` in the middle while
 preserving their beginning and ending. This affects log output only; executed
 SQL and parameter values are unchanged.

@@ -38,9 +38,9 @@ mark a fallback update condition for models without a primary key. Use
 `sql:"-"` to skip a field.
 
 ```go
-type ApprovalLogUpdate struct {
-    ReferenceID string `sql:"column:reference_id;where"`
-    Flag        int    `sql:"column:flag"`
+type ProfileUpdate struct {
+    UserID      uint64 `sql:"column:user_id;where"`
+    DisplayName string `sql:"column:display_name"`
 }
 ```
 

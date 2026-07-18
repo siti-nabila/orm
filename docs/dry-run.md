@@ -44,10 +44,10 @@ The transaction adapter currently exposes `DryRunUpdateBulk`.
 Use `DryRunUpdates` to inspect a chained model update without executing it:
 
 ```go
-update := &ApprovalLogUpdate{
-    CompanyID:   7,
-    ReferenceID: "INV-001",
-    Flag:        0,
+update := &ProfileUpdate{
+    TenantID:    7,
+    UserID:      42,
+    DisplayName: "Nabila",
 }
 
 result, err := tx.
@@ -67,14 +67,14 @@ verify the following output shape:
 
 | Dialect | Important query fragment |
 | --- | --- |
-| PostgreSQL | `SET flag = $1 WHERE company_id = $2 AND reference_id = $3` |
-| MySQL | `SET flag = ? WHERE company_id = ? AND reference_id = ?` |
-| Oracle | `SET flag = :flag WHERE company_id = :company_id AND reference_id = :reference_id` |
+| PostgreSQL | `SET display_name = $1 WHERE tenant_id = $2 AND user_id = $3` |
+| MySQL | `SET display_name = ? WHERE tenant_id = ? AND user_id = ?` |
+| Oracle | `SET display_name = :display_name WHERE tenant_id = :tenant_id AND user_id = :user_id` |
 
 For all three dialects:
 
 ```go
-result.Args == []any{0, uint64(7), "INV-001"}
+result.Args == []any{"Nabila", uint64(7), uint64(42)}
 result.Mode == builder.DryRunModeExec
 ```
 

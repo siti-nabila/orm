@@ -272,30 +272,30 @@ func formatPostgresArray(v any) (string, bool) {
 		return "", false
 	}
 
-	return joinCollection("ARRAY[", "]", rv.Len(), func(i int) string {
+	return joinValues("ARRAY[", "]", rv.Len(), func(i int) string {
 		return formatValueForDialect(rv.Index(i).Interface(), dialect.DialectPostgres)
 	}), true
 }
 
 func joinQuoted(strs []string) string {
-	return joinCollection("(", ")", len(strs), func(i int) string {
+	return joinValues("(", ")", len(strs), func(i int) string {
 		return "'" + strings.ReplaceAll(strs[i], "'", "''") + "'"
 	})
 }
 
 func joinNumbers[T ~int | ~int8 | ~int16 | ~int32 | ~int64 | ~uint | ~uint16 | ~uint32 | ~uint64](nums []T) string {
-	return joinCollection("(", ")", len(nums), func(i int) string {
+	return joinValues("(", ")", len(nums), func(i int) string {
 		return fmt.Sprintf("%v", nums[i])
 	})
 }
 
 func joinAny(vals []any) string {
-	return joinCollection("(", ")", len(vals), func(i int) string {
+	return joinValues("(", ")", len(vals), func(i int) string {
 		return formatValue(vals[i])
 	})
 }
 
-func joinCollection(prefix, suffix string, length int, format func(int) string) string {
+func joinValues(prefix, suffix string, length int, format func(int) string) string {
 	var b strings.Builder
 	b.WriteString(prefix)
 
@@ -306,7 +306,7 @@ func joinCollection(prefix, suffix string, length int, format func(int) string) 
 
 		b.WriteString(format(i))
 		if b.Len()+len(suffix) > maxLogArgLength {
-			return joinTruncatedCollection(prefix, suffix, length, format)
+			return joinTruncatedValues(prefix, suffix, length, format)
 		}
 	}
 
@@ -314,7 +314,7 @@ func joinCollection(prefix, suffix string, length int, format func(int) string) 
 	return b.String()
 }
 
-func joinTruncatedCollection(prefix, suffix string, length int, format func(int) string) string {
+func joinTruncatedValues(prefix, suffix string, length int, format func(int) string) string {
 	if length == 0 {
 		return prefix + suffix
 	}

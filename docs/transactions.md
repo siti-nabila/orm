@@ -42,10 +42,10 @@ builder. It can be used for chained model updates:
 
 ```go
 result, err := tx.
-    UseModel(&ApprovalLogUpdate{
-        CompanyID:   7,
-        ReferenceID: "INV-001",
-        Flag:        0,
+    UseModel(&ProfileUpdate{
+        TenantID:    7,
+        UserID:      42,
+        DisplayName: "Nabila",
     }).
     Updates()
 if err != nil {
