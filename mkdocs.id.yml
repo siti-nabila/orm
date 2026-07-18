@@ -24,6 +24,7 @@ nav:
   - Create, Update, dan Penulisan Massal: create-update.md
   - Memindai Hasil: scan.md
   - Paginasi: pagination.md
+  - Full Text Trigram: full-text-trigram.md
   - Dry Run: dry-run.md
   - Transaksi dan Penguncian: transactions.md
   - Catatan Dialek: dialects.md
