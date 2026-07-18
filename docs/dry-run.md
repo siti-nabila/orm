@@ -141,3 +141,8 @@ fmt.Println(result.Data.Mode)
 Set `config.Config{LogDryRunQuery: true}` and configure a logger to emit dry
 run logs. The default query adapter installs `logger.DefaultLogger` using
 `EnableDebug`; dry-run logging is still controlled by `LogDryRunQuery`.
+
+Long values in the rendered default log are truncated, and PostgreSQL array
+args are rendered as `ARRAY[...]`. `DryRunResult.Query`, `DryRunResult.Args`, and
+`DryRunResult.Mode` are not modified by log formatting. In particular, the args
+returned by DryRun remain the original parameter values supplied by the caller.

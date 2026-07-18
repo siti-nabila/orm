@@ -18,6 +18,26 @@ dialect.NewOracle()
 - Advisory lock: `pg_try_advisory_xact_lock($1)`.
 - Bulk insert uses query mode to scan returned primary keys.
 
+### PostgreSQL Array Arguments
+
+The DB and transaction executors normalize non-byte slice and array arguments
+with `pq.Array` before calling `database/sql`. This supports PostgreSQL array
+parameters such as `[]int64`, `[]uint32`, and `[]float64` without requiring the
+caller to wrap every value manually.
+
+```go
+_, err := executor.ExecContext(
+    ctx,
+    "UPDATE users SET role_ids = $1 WHERE id = $2",
+    []int64{10, 20},
+    userID,
+)
+```
+
+Existing `driver.Valuer` arguments are preserved, `[]byte` remains a binary
+argument, and a nil pointer is passed as `NULL`. This normalization is only
+applied to PostgreSQL; MySQL and Oracle args retain their existing behavior.
+
 ## MySQL
 
 - Dialect name: `mysql`
@@ -45,3 +65,11 @@ dialect.NewOracle()
 `config.PlaceholderAuto` uses named-style placeholders for Oracle and numbered
 placeholders for the other supported dialects. The query builder rebinding keeps
 raw `?` condition placeholders aligned with each dialect.
+
+## Logged Values
+
+The default logger renders PostgreSQL slices and arrays as `ARRAY[...]`. MySQL
+and Oracle retain parenthesized collection rendering. Long scalar and collection
+values are limited to 120 bytes with `...(truncated)...` in the middle while
+preserving their beginning and ending. This affects log output only; executed
+SQL and parameter values are unchanged.

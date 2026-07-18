@@ -18,6 +18,11 @@ import (
 // 	oracleNamePlaceholder = regexp.MustCompile(`:([a-zA-Z_][a-zA-Z0-9_]*)`)
 // )
 
+const (
+	maxLogArgLength  = 120
+	truncatedLogMark = "...(truncated)..."
+)
+
 func Interpolate(
 	query string,
 	d dialect.Dialector,
@@ -32,38 +37,38 @@ func Interpolate(
 	switch d.Type() {
 
 	case dialect.DialectPostgres:
-		return interpolateNumbered(query, "$", args...)
+		return interpolateNumbered(query, "$", d.Type(), args...)
 
 	case dialect.DialectOracle:
 		// detect apakah :1 atau :name
 		if strings.Contains(query, ":1") {
-			return interpolateNumbered(query, ":", args...)
+			return interpolateNumbered(query, ":", d.Type(), args...)
 		}
-		return interpolateNamed(query, cols, args...)
+		return interpolateNamed(query, d.Type(), cols, args...)
 
 	case dialect.DialectMySQL:
-		return interpolateQuestion(query, args...)
+		return interpolateQuestion(query, d.Type(), args...)
 
 	default:
 		return query
 	}
 }
 
-func interpolateNumbered(query, prefix string, args ...any) string {
+func interpolateNumbered(query, prefix string, dType dialect.DialectType, args ...any) string {
 	for i, arg := range args {
 		ph := fmt.Sprintf("%s%d", prefix, i+1)
-		query = strings.Replace(query, ph, formatValue(arg), 1)
+		query = strings.Replace(query, ph, formatValueForDialect(arg, dType), 1)
 	}
 	return query
 }
 
-func interpolateQuestion(query string, args ...any) string {
+func interpolateQuestion(query string, dType dialect.DialectType, args ...any) string {
 	var b strings.Builder
 	argIdx := 0
 
 	for i := 0; i < len(query); i++ {
 		if query[i] == '?' && argIdx < len(args) {
-			b.WriteString(formatValue(args[argIdx]))
+			b.WriteString(formatValueForDialect(args[argIdx], dType))
 			argIdx++
 			continue
 		}
@@ -75,6 +80,7 @@ func interpolateQuestion(query string, args ...any) string {
 
 func interpolateNamed(
 	query string,
+	dType dialect.DialectType,
 	cols []mapper.ColumnMeta,
 	args ...any,
 ) string {
@@ -90,13 +96,23 @@ func interpolateNamed(
 
 	for name, val := range argMap {
 		ph := ":" + name
-		query = strings.ReplaceAll(query, ph, formatValue(val))
+		query = strings.ReplaceAll(query, ph, formatValueForDialect(val, dType))
 	}
 
 	return query
 }
 
 func formatValue(v any) string {
+	return formatValueForDialect(v, "")
+}
+
+func formatValueForDialect(v any, dType dialect.DialectType) string {
+	if dType == dialect.DialectPostgres {
+		if rendered, ok := formatPostgresArray(v); ok {
+			return rendered
+		}
+	}
+
 	v = normalizeLogValue(v)
 	switch val := v.(type) {
 
@@ -104,10 +120,10 @@ func formatValue(v any) string {
 		return "NULL"
 
 	case string:
-		return "'" + strings.ReplaceAll(val, "'", "''") + "'"
+		return truncateLogValue("'" + strings.ReplaceAll(val, "'", "''") + "'")
 
 	case []byte:
-		return "'" + strings.ReplaceAll(string(val), "'", "''") + "'"
+		return truncateLogValue("'" + strings.ReplaceAll(string(val), "'", "''") + "'")
 
 	case bool:
 		if val {
@@ -122,10 +138,25 @@ func formatValue(v any) string {
 	case []string:
 		return joinQuoted(val)
 
+	case []int8:
+		return joinNumbers(val)
+
+	case []int16:
+		return joinNumbers(val)
+
+	case []int32:
+		return joinNumbers(val)
+
 	case []int:
 		return joinNumbers(val)
 
 	case []int64:
+		return joinNumbers(val)
+
+	case []uint16:
+		return joinNumbers(val)
+
+	case []uint32:
 		return joinNumbers(val)
 
 	case []uint:
@@ -138,7 +169,7 @@ func formatValue(v any) string {
 		return joinAny(val)
 
 	default:
-		return fmt.Sprintf("%v", val)
+		return truncateLogValue(fmt.Sprintf("%v", val))
 	}
 }
 
@@ -189,26 +220,162 @@ func driverValue(v any) (any, bool) {
 
 	return val, true
 }
-func joinQuoted(strs []string) string {
-	out := make([]string, len(strs))
-	for i, s := range strs {
-		out[i] = "'" + strings.ReplaceAll(s, "'", "''") + "'"
-	}
-	return "(" + strings.Join(out, ",") + ")"
+
+func truncateLogValue(s string) string {
+	return truncateLogValueTo(s, maxLogArgLength)
 }
 
-func joinNumbers[T ~int | ~int64 | ~uint | ~uint64](nums []T) string {
-	out := make([]string, len(nums))
-	for i, n := range nums {
-		out[i] = fmt.Sprintf("%v", n)
+func truncateLogValueTo(s string, limit int) string {
+	if limit <= 0 {
+		return ""
 	}
-	return "(" + strings.Join(out, ",") + ")"
+
+	if len(s) <= limit {
+		return s
+	}
+
+	if limit <= len(truncatedLogMark) {
+		return s[:limit]
+	}
+
+	remaining := limit - len(truncatedLogMark)
+	headLen := remaining / 2
+	tailLen := remaining - headLen
+
+	return s[:headLen] + truncatedLogMark + s[len(s)-tailLen:]
+}
+
+func formatPostgresArray(v any) (string, bool) {
+	if v == nil {
+		return "", false
+	}
+
+	rv := reflect.ValueOf(v)
+	if !rv.IsValid() {
+		return "", false
+	}
+
+	rt := rv.Type()
+	for rt.Kind() == reflect.Ptr {
+		if rv.IsNil() {
+			return "NULL", true
+		}
+		rv = rv.Elem()
+		rt = rv.Type()
+	}
+
+	if rt.Kind() != reflect.Slice && rt.Kind() != reflect.Array {
+		return "", false
+	}
+
+	if rt.Elem().Kind() == reflect.Uint8 {
+		return "", false
+	}
+
+	return joinCollection("ARRAY[", "]", rv.Len(), func(i int) string {
+		return formatValueForDialect(rv.Index(i).Interface(), dialect.DialectPostgres)
+	}), true
+}
+
+func joinQuoted(strs []string) string {
+	return joinCollection("(", ")", len(strs), func(i int) string {
+		return "'" + strings.ReplaceAll(strs[i], "'", "''") + "'"
+	})
+}
+
+func joinNumbers[T ~int | ~int8 | ~int16 | ~int32 | ~int64 | ~uint | ~uint16 | ~uint32 | ~uint64](nums []T) string {
+	return joinCollection("(", ")", len(nums), func(i int) string {
+		return fmt.Sprintf("%v", nums[i])
+	})
 }
 
 func joinAny(vals []any) string {
-	out := make([]string, len(vals))
-	for i, v := range vals {
-		out[i] = formatValue(v)
+	return joinCollection("(", ")", len(vals), func(i int) string {
+		return formatValue(vals[i])
+	})
+}
+
+func joinCollection(prefix, suffix string, length int, format func(int) string) string {
+	var b strings.Builder
+	b.WriteString(prefix)
+
+	for i := 0; i < length; i++ {
+		if i > 0 {
+			b.WriteByte(',')
+		}
+
+		b.WriteString(format(i))
+		if b.Len()+len(suffix) > maxLogArgLength {
+			return joinTruncatedCollection(prefix, suffix, length, format)
+		}
 	}
-	return "(" + strings.Join(out, ",") + ")"
+
+	b.WriteString(suffix)
+	return b.String()
+}
+
+func joinTruncatedCollection(prefix, suffix string, length int, format func(int) string) string {
+	if length == 0 {
+		return prefix + suffix
+	}
+
+	if length == 1 {
+		return truncateLogValue(prefix + format(0) + suffix)
+	}
+
+	middle := "," + truncatedLogMark + ","
+	budget := maxLogArgLength - len(prefix) - len(suffix) - len(middle)
+	if budget <= 0 {
+		return truncateLogValue(prefix + truncatedLogMark + suffix)
+	}
+
+	frontBudget := budget / 2
+	backBudget := budget - frontBudget
+
+	frontParts := make([]string, 0)
+	frontLen := 0
+	for i := 0; i < length; i++ {
+		part := format(i)
+		addLen := len(part)
+		if len(frontParts) > 0 {
+			addLen++
+		}
+
+		if frontLen+addLen > frontBudget {
+			if len(frontParts) == 0 && frontBudget > 0 {
+				frontParts = append(frontParts, truncateLogValueTo(part, frontBudget))
+			}
+			break
+		}
+
+		frontParts = append(frontParts, part)
+		frontLen += addLen
+	}
+
+	backParts := make([]string, 0)
+	backLen := 0
+	for i := length - 1; i >= len(frontParts); i-- {
+		part := format(i)
+		addLen := len(part)
+		if len(backParts) > 0 {
+			addLen++
+		}
+
+		if backLen+addLen > backBudget {
+			if len(backParts) == 0 && backBudget > 0 {
+				backParts = append(backParts, truncateLogValueTo(part, backBudget))
+			}
+			break
+		}
+
+		backParts = append(backParts, part)
+		backLen += addLen
+	}
+
+	for i, j := 0, len(backParts)-1; i < j; i, j = i+1, j-1 {
+		backParts[i], backParts[j] = backParts[j], backParts[i]
+	}
+
+	out := prefix + strings.Join(frontParts, ",") + middle + strings.Join(backParts, ",") + suffix
+	return truncateLogValue(out)
 }

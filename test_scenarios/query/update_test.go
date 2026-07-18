@@ -42,6 +42,13 @@ type noSetModel struct {
 	ID uint64 `sql:"column:id;primaryKey"`
 }
 
+type arrayUpdateModel struct {
+	ID      uint64  `sql:"column:id;primaryKey"`
+	RoleIDs []int64 `sql:"column:role_ids"`
+}
+
+func (*arrayUpdateModel) TableName() string { return "users" }
+
 type fakeResult struct{}
 
 func (fakeResult) LastInsertId() (int64, error) { return 0, nil }
@@ -96,6 +103,25 @@ func TestDryRunUpdatesUsesTaggedWhereAndTaggedSetColumns(t *testing.T) {
 		t.Fatalf("unexpected query: %s", got.Query)
 	}
 	if !reflect.DeepEqual(got.Args, []any{0, uint64(0), ""}) {
+		t.Fatalf("unexpected args: %#v", got.Args)
+	}
+	if got.Mode != builder.DryRunModeExec {
+		t.Fatalf("unexpected mode: %s", got.Mode)
+	}
+}
+
+func TestDryRunUpdatesPreservesPostgresArrayArgs(t *testing.T) {
+	roleIDs := []int64{10, 20}
+	b, _ := newFakeBuilder(&arrayUpdateModel{ID: 7, RoleIDs: roleIDs})
+
+	got, err := b.DryRunUpdates()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Query != "UPDATE users SET role_ids = $1 WHERE id = $2" {
+		t.Fatalf("unexpected query: %s", got.Query)
+	}
+	if !reflect.DeepEqual(got.Args, []any{roleIDs, uint64(7)}) {
 		t.Fatalf("unexpected args: %#v", got.Args)
 	}
 	if got.Mode != builder.DryRunModeExec {
