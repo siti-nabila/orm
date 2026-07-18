@@ -8,26 +8,26 @@ import (
 )
 
 func (db *DB) Exec(query string, args ...any) (sql.Result, error) {
-	return db.conn.Exec(query, args...)
+	return db.conn.Exec(query, normalizeArgs(db.dialect, args)...)
 }
 
 func (db *DB) Query(query string, args ...any) (*sql.Rows, error) {
-	return db.conn.Query(query, args...)
+	return db.conn.Query(query, normalizeArgs(db.dialect, args)...)
 }
 
 func (db *DB) QueryRow(query string, args ...any) *sql.Row {
-	return db.conn.QueryRow(query, args...)
+	return db.conn.QueryRow(query, normalizeArgs(db.dialect, args)...)
 }
 
 func (db *DB) QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row {
-	return db.conn.QueryRowContext(ctx, query, args...)
+	return db.conn.QueryRowContext(ctx, query, normalizeArgs(db.dialect, args)...)
 }
 
 func (db *DB) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
-	return db.conn.QueryContext(ctx, query, args...)
+	return db.conn.QueryContext(ctx, query, normalizeArgs(db.dialect, args)...)
 }
 func (db *DB) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
-	return db.conn.ExecContext(ctx, query, args...)
+	return db.conn.ExecContext(ctx, query, normalizeArgs(db.dialect, args)...)
 }
 
 func (db *DB) Begin() (*Tx, error) {

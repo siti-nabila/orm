@@ -33,5 +33,16 @@ func (User) TableName() string {
 ```
 
 Struct fields are mapped with the `sql` tag. Use `column:name` to set the
-database column name and `primaryKey` to mark the primary key field. Use
+database column name, `primaryKey` to mark the primary key field, and `where` to
+mark a fallback update condition for models without a primary key. Use
 `sql:"-"` to skip a field.
+
+```go
+type ProfileUpdate struct {
+    UserID      uint64 `sql:"column:user_id;where"`
+    DisplayName string `sql:"column:display_name"`
+}
+```
+
+See [Create, Update, and Bulk Writes](create-update.md) for condition precedence,
+zero-value behavior, chained updates, and safety rules.

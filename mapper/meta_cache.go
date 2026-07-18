@@ -19,6 +19,8 @@ type (
 	cachedColumnMeta struct {
 		Name       string
 		PrimaryKey bool
+		Where      bool
+		SQLTagged  bool
 		Index      []int
 	}
 	cachedMeta struct {

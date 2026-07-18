@@ -12,6 +12,8 @@ type (
 		Name       string
 		Value      any
 		PrimaryKey bool
+		Where      bool
+		SQLTagged  bool
 		FieldSrc   reflect.Value
 	}
 )
@@ -23,4 +25,14 @@ func (m Meta) GetPrimaryKeyColumn() *ColumnMeta {
 		}
 	}
 	return nil
+}
+
+func (m Meta) GetWhereColumns() []ColumnMeta {
+	out := make([]ColumnMeta, 0)
+	for i := range m.Columns {
+		if m.Columns[i].Where {
+			out = append(out, m.Columns[i])
+		}
+	}
+	return out
 }

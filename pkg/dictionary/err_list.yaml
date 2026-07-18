@@ -217,7 +217,6 @@ errors:
     code: 4050
     en: "orm: scan destination cannot be empty."
     id: "orm: tujuan scan tidak boleh kosong."
-
   # Pagination Errors
   err_pagination_invalid_limit:
     code: 4054
@@ -279,3 +278,21 @@ errors:
     code: 4068
     en: "orm: pagination cursor is required for in-memory offset."
     id: "orm: cursor pagination wajib diisi untuk offset in-memory."
+
+  # Model Update Errors
+  err_where_value_nil:
+    code: 4069
+    en: "orm: tagged where value cannot be nil."
+    id: "orm: nilai tagged where tidak boleh nil."
+  err_update_without_where:
+    code: 4070
+    en: "orm: update without a where condition is not allowed."
+    id: "orm: update tanpa kondisi where tidak diizinkan."
+  err_update_where_field_conflict:
+    code: 4071
+    en: "orm: tagged where column cannot be updated."
+    id: "orm: kolom tagged where tidak boleh diperbarui."
+  err_update_executor_unsupported:
+    code: 4072
+    en: "orm: update execution is not supported by this query adapter."
+    id: "orm: eksekusi update tidak didukung oleh adapter query ini."

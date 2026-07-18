@@ -2,6 +2,7 @@ package builder
 
 import (
 	"fmt"
+	"reflect"
 	"sort"
 	"strings"
 
@@ -84,6 +85,40 @@ func GenerateWherePrimaryKeyQuery(
 	return fmt.Sprintf("%s = %s", colName, ph), nil
 }
 
+func GenerateWhereColumnsQuery(
+	d dialect.Dialector,
+	mode config.PlaceholderMode,
+	quote bool,
+	cols []mapper.ColumnMeta,
+	startIdx int,
+) (string, error) {
+	parts := make([]string, 0, len(cols))
+	for i, col := range cols {
+		part, err := GenerateWherePrimaryKeyQuery(d, mode, quote, col, startIdx+i)
+		if err != nil {
+			return "", err
+		}
+		parts = append(parts, part)
+	}
+	return strings.Join(parts, " AND "), nil
+}
+
+func ValidateWhereColumns(cols []mapper.ColumnMeta) error {
+	for _, col := range cols {
+		v := reflect.ValueOf(col.Value)
+		for v.IsValid() && (v.Kind() == reflect.Ptr || v.Kind() == reflect.Interface) {
+			if v.IsNil() {
+				return fmt.Errorf("%w: %s", dictionary.ErrWhereValueNil, col.Name)
+			}
+			v = v.Elem()
+		}
+		if col.Value == nil {
+			return fmt.Errorf("%w: %s", dictionary.ErrWhereValueNil, col.Name)
+		}
+	}
+	return nil
+}
+
 func buildUpdateQueryFromStruct(
 	v any,
 	d dialect.Dialector,
@@ -97,12 +132,16 @@ func buildUpdateQueryFromStruct(
 	}
 	// ambil Primary Key Column
 	pk := meta.GetPrimaryKeyColumn()
-	if pk == nil {
+	whereCols := meta.GetWhereColumns()
+	if pk != nil {
+		if helper.IsZero(pk.Value) {
+			return UpdateQueryResult{}, dictionary.ErrPrimaryKeyEmpty
+		}
+		whereCols = []mapper.ColumnMeta{*pk}
+	} else if len(whereCols) == 0 {
 		return UpdateQueryResult{}, dictionary.ErrPrimaryKeyNotFound
-	}
-
-	if helper.IsZero(pk.Value) {
-		return UpdateQueryResult{}, dictionary.ErrPrimaryKeyEmpty
+	} else if err := ValidateWhereColumns(whereCols); err != nil {
+		return UpdateQueryResult{}, err
 	}
 
 	setCols := filterUpdateColumns(meta.Columns)
@@ -119,11 +158,11 @@ func buildUpdateQueryFromStruct(
 	if err != nil {
 		return UpdateQueryResult{}, err
 	}
-	whereQuery, err := GenerateWherePrimaryKeyQuery(
+	whereQuery, err := GenerateWhereColumnsQuery(
 		d,
 		mode,
 		cfg.QuoteIdentifier,
-		*pk,
+		whereCols,
 		len(setCols)+1,
 	)
 	if err != nil {
@@ -131,11 +170,11 @@ func buildUpdateQueryFromStruct(
 	}
 
 	args := GenerateValuesFromMeta(setCols)
-	args = append(args, pk.Value)
+	args = append(args, GenerateValuesFromMeta(whereCols)...)
 
 	placeholderCols := make([]mapper.ColumnMeta, 0, len(setCols)+1)
 	placeholderCols = append(placeholderCols, setCols...)
-	placeholderCols = append(placeholderCols, *pk)
+	placeholderCols = append(placeholderCols, whereCols...)
 
 	table := meta.Table
 	if cfg.QuoteIdentifier {
@@ -172,23 +211,28 @@ func buildUpdateQueryFromMap(
 
 	// ambil Primary Key Column dari struct
 	pk := meta.GetPrimaryKeyColumn()
-	if pk == nil {
-		return UpdateQueryResult{}, dictionary.ErrPrimaryKeyNotFound
-	}
+	whereCols := meta.GetWhereColumns()
 
 	if len(fields) == 0 {
 		return UpdateQueryResult{}, dictionary.ErrDBQueryEmpty
 	}
 
 	// cek apakah map fields untuk diupdate ada primary key nya yang cocok dengan struct tabler
-	pkValue, ok := fields[pk.Name]
-	if !ok {
+	if pk != nil {
+		pkValue, ok := fields[pk.Name]
+		if !ok {
+			return UpdateQueryResult{}, dictionary.ErrPrimaryKeyNotFound
+		}
+		if helper.IsZero(pkValue) {
+			return UpdateQueryResult{}, dictionary.ErrPrimaryKeyEmpty
+		}
+		whereCol := *pk
+		whereCol.Value = pkValue
+		whereCols = []mapper.ColumnMeta{whereCol}
+	} else if len(whereCols) == 0 {
 		return UpdateQueryResult{}, dictionary.ErrPrimaryKeyNotFound
-	}
-
-	// cek apakah value primary key nya zero value
-	if helper.IsZero(pkValue) {
-		return UpdateQueryResult{}, dictionary.ErrPrimaryKeyEmpty
+	} else if err := ValidateWhereColumns(whereCols); err != nil {
+		return UpdateQueryResult{}, err
 	}
 
 	// buat urutan fields map, karena kalau hanya looping map nya saja akan random
@@ -202,6 +246,9 @@ func buildUpdateQueryFromMap(
 		colMeta := meta.Columns[idx]
 		if colMeta.PrimaryKey {
 			continue
+		}
+		if colMeta.Where {
+			return UpdateQueryResult{}, fmt.Errorf("%w: %s", dictionary.ErrUpdateWhereFieldConflict, key)
 		}
 
 		keys = append(keys, key)
@@ -236,26 +283,23 @@ func buildUpdateQueryFromMap(
 		return UpdateQueryResult{}, err
 	}
 
-	whereCol := *pk
-	whereCol.Value = pkValue
-
 	placeholderCols := make([]mapper.ColumnMeta, 0, len(setCols)+1)
 	placeholderCols = append(placeholderCols, setCols...)
-	placeholderCols = append(placeholderCols, whereCol)
+	placeholderCols = append(placeholderCols, whereCols...)
 
 	// karena where selalu di akhir, maka index placeholder nya dimulai dari len(setCols)+1
-	whereQuery, err := GenerateWherePrimaryKeyQuery(
+	whereQuery, err := GenerateWhereColumnsQuery(
 		d,
 		mode,
 		cfg.QuoteIdentifier,
-		whereCol,
+		whereCols,
 		len(setCols)+1,
 	)
 	if err != nil {
 		return UpdateQueryResult{}, err
 	}
 
-	args = append(args, pkValue)
+	args = append(args, GenerateValuesFromMeta(whereCols)...)
 
 	table := meta.Table
 	if cfg.QuoteIdentifier {
@@ -282,7 +326,7 @@ func buildUpdateQueryFromMap(
 func filterUpdateColumns(cols []mapper.ColumnMeta) []mapper.ColumnMeta {
 	out := make([]mapper.ColumnMeta, 0, len(cols))
 	for _, c := range cols {
-		if c.PrimaryKey {
+		if c.PrimaryKey || c.Where {
 			continue
 		}
 		out = append(out, c)
