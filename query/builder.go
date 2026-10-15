@@ -2,6 +2,7 @@ package query
 
 import (
 	"context"
+	"reflect"
 
 	"github.com/siti-nabila/orm/builder"
 	"github.com/siti-nabila/orm/config"
@@ -30,7 +31,7 @@ type (
 		limit               *int
 		offset              *int
 		orderBys            []string
-		joins               []Join
+		joins               []builderJoin
 		selectExprs         []string
 		groupBys            []string
 		having              []Condition
@@ -43,6 +44,11 @@ type (
 		Type  string
 		Table string
 		On    string
+	}
+	builderJoin struct {
+		Join
+		child *QueryBuilder
+		alias string
 	}
 )
 
@@ -236,7 +242,10 @@ func (b *QueryBuilder) clone() *QueryBuilder {
 	cloned.selectCols = append([]string(nil), b.selectCols...)
 	cloned.conditions = cloneConditions(b.conditions)
 	cloned.orderBys = append([]string(nil), b.orderBys...)
-	cloned.joins = append([]Join(nil), b.joins...)
+	cloned.joins = append([]builderJoin(nil), b.joins...)
+	for i := range cloned.joins {
+		cloned.joins[i].child = cloned.joins[i].child.clone()
+	}
 	cloned.selectExprs = append([]string(nil), b.selectExprs...)
 	cloned.groupBys = append([]string(nil), b.groupBys...)
 	cloned.having = cloneConditions(b.having)
@@ -259,6 +268,17 @@ func cloneConditions(conditions []Condition) []Condition {
 		switch c := condition.(type) {
 		case ExpressionCondition:
 			c.Args = append([]any(nil), c.Args...)
+			for i, arg := range c.Args {
+				value := reflect.ValueOf(arg)
+				if value.IsValid() && value.Kind() == reflect.Slice && !value.IsNil() {
+					copied := reflect.MakeSlice(value.Type(), value.Len(), value.Len())
+					reflect.Copy(copied, value)
+					c.Args[i] = copied.Interface()
+				}
+			}
+			cloned = append(cloned, c)
+		case subqueryCondition:
+			c.child = c.child.clone()
 			cloned = append(cloned, c)
 		case GroupCondition:
 			c.Conditions = cloneConditions(c.Conditions)
@@ -330,11 +350,11 @@ func (b *QueryBuilder) Join(table string, on string) *QueryBuilder {
 		return b
 	}
 
-	b.joins = append(b.joins, Join{
+	b.joins = append(b.joins, builderJoin{Join: Join{
 		Type:  "JOIN",
 		Table: table,
 		On:    on,
-	})
+	}})
 
 	return b
 }
@@ -344,11 +364,11 @@ func (b *QueryBuilder) LeftJoin(table string, on string) *QueryBuilder {
 		return b
 	}
 
-	b.joins = append(b.joins, Join{
+	b.joins = append(b.joins, builderJoin{Join: Join{
 		Type:  "LEFT JOIN",
 		Table: table,
 		On:    on,
-	})
+	}})
 
 	return b
 }
@@ -358,11 +378,11 @@ func (b *QueryBuilder) RightJoin(table string, on string) *QueryBuilder {
 		return b
 	}
 
-	b.joins = append(b.joins, Join{
+	b.joins = append(b.joins, builderJoin{Join: Join{
 		Type:  "RIGHT JOIN",
 		Table: table,
 		On:    on,
-	})
+	}})
 
 	return b
 }

@@ -90,8 +90,9 @@ func buildGroupCondition(
 	mode config.PlaceholderMode,
 	c GroupCondition,
 	startIdx int,
+	cfg config.Config,
 ) (string, []any, int, error) {
-	groupQuery, groupArgs, nextIdx, err := buildConditions(d, mode, c.Conditions, startIdx)
+	groupQuery, groupArgs, nextIdx, err := buildConditions(d, mode, c.Conditions, startIdx, cfg)
 	if err != nil {
 		return "", nil, startIdx, err
 	}
@@ -120,6 +121,7 @@ func buildConditions(
 	mode config.PlaceholderMode,
 	conds []Condition,
 	startIdx int,
+	cfg config.Config,
 ) (string, []any, int, error) {
 	if len(conds) == 0 {
 		return "", nil, startIdx, nil
@@ -145,8 +147,20 @@ func buildConditions(
 				partIndex++
 			}
 
+		case subqueryCondition:
+			if c.prefix == "" {
+				return "", nil, startIdx, dictionary.ErrDBQueryEmpty
+			}
+			res, err := c.child.buildAt(cfg, d, mode, idx)
+			if err != nil {
+				return "", nil, startIdx, err
+			}
+			parts = appendConditionPart(parts, partIndex, c.operator, c.prefix+" ("+res.Query+")")
+			args = append(args, res.Args...)
+			idx += len(res.Args)
+			partIndex++
 		case GroupCondition:
-			expr, exprArgs, nextIdx, err := buildGroupCondition(d, mode, c, idx)
+			expr, exprArgs, nextIdx, err := buildGroupCondition(d, mode, c, idx, cfg)
 			if err != nil {
 				return "", nil, startIdx, err
 			}
@@ -257,17 +271,16 @@ func expandSliceArgsInQuery(query string, args []any) (string, []any, error) {
 }
 
 func (b *QueryBuilder) build() (QueryBuilderResult, error) {
-	if b.orm == nil {
+	if b == nil || b.orm == nil {
 		return QueryBuilderResult{}, dictionary.ErrDBQueryEmpty
 	}
+	return b.buildAt(b.orm.Config(), b.orm.Dialect(), b.orm.PlaceholderMode(), 1)
+}
 
-	if b.model == nil {
+func (b *QueryBuilder) buildAt(cfg config.Config, d dialect.Dialector, mode config.PlaceholderMode, start int) (QueryBuilderResult, error) {
+	if b == nil || b.model == nil {
 		return QueryBuilderResult{}, dictionary.ErrDBQueryEmpty
 	}
-
-	cfg := b.orm.Config()
-	d := b.orm.Dialect()
-	mode := b.orm.PlaceholderMode()
 
 	meta, err := mapper.Parse(b.model, cfg.UseSnakeCase)
 	if err != nil {
@@ -314,11 +327,13 @@ func (b *QueryBuilder) build() (QueryBuilderResult, error) {
 	selectQuery := strings.Join(selectParts, ", ")
 	query := fmt.Sprintf("%s %s FROM %s", selectKeyword, selectQuery, table)
 
-	for _, j := range b.joins {
-		query += " " + j.Type + " " + j.Table + " ON " + j.On
+	joinSQL, args, idx, err := b.buildJoins(cfg, d, mode, start)
+	if err != nil {
+		return QueryBuilderResult{}, err
 	}
-
-	whereQuery, args, nextIdx, err := buildConditions(d, mode, b.conditions, 1)
+	query += joinSQL
+	whereQuery, whereArgs, nextIdx, err := buildConditions(d, mode, b.conditions, idx, cfg)
+	args = append(args, whereArgs...)
 	if err != nil {
 		return QueryBuilderResult{}, err
 	}
@@ -331,7 +346,7 @@ func (b *QueryBuilder) build() (QueryBuilderResult, error) {
 		query += " GROUP BY " + strings.Join(b.groupBys, ", ")
 	}
 
-	havingQuery, havingArgs, _, err := buildConditions(d, mode, b.having, nextIdx)
+	havingQuery, havingArgs, _, err := buildConditions(d, mode, b.having, nextIdx, cfg)
 	if err != nil {
 		return QueryBuilderResult{}, err
 	}
@@ -389,11 +404,13 @@ func (b *QueryBuilder) buildCount() (QueryBuilderResult, error) {
 
 	query := fmt.Sprintf("SELECT COUNT(*) FROM %s", table)
 
-	for _, j := range b.joins {
-		query += " " + j.Type + " " + j.Table + " ON " + j.On
+	joinSQL, args, idx, err := b.buildJoins(cfg, d, mode, 1)
+	if err != nil {
+		return QueryBuilderResult{}, err
 	}
-
-	whereQuery, args, _, err := buildConditions(d, mode, b.conditions, 1)
+	query += joinSQL
+	whereQuery, whereArgs, _, err := buildConditions(d, mode, b.conditions, idx, cfg)
+	args = append(args, whereArgs...)
 	if err != nil {
 		return QueryBuilderResult{}, err
 	}

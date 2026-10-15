@@ -250,3 +250,22 @@ transaksi juga menyediakan `DryRunUpdateBulk`.
 ## Belum Diimplementasikan
 
 API delete bukan bagian dari repositori ini.
+
+## Hasil INSERT tanpa pengisian generated ID
+
+```go
+result, err := tx.CreateWith(&assignment).ExecResult()
+if err != nil {
+    return err
+}
+rows, err := result.RowsAffected()
+```
+
+ExecResult memakai mapper, dialect builder dan SQL/args yang sama dengan
+CreateWith(...).DryRun() tanpa returning (Mode=exec). Hasil eksekusi dan error
+diteruskan ke caller; method tidak membaca LastInsertId, mengisi primary key,
+atau melakukan commit/rollback. Caller memutuskan makna count nol/lebih dari
+satu dan error RowsAffected. WithReturning ditolak sebelum eksekusi.
+Create, Exec, Scan, ScanInto dan DryRun existing tetap kompatibel. Gunakan model
+khusus INSERT untuk mempertahankan default kolom yang tidak disertakan; nilai
+nol dan nullable mengikuti aturan mapper existing.
