@@ -55,7 +55,7 @@ func (b *QueryBuilder) buildUpdate() (builder.UpdateQueryResult, error) {
 	)
 
 	if len(b.conditions) > 0 {
-		whereQuery, whereArgs, _, err = buildConditions(d, mode, b.conditions, len(setCols)+1)
+		whereQuery, whereArgs, _, err = buildConditions(d, mode, b.conditions, len(setCols)+1, cfg)
 		if err != nil {
 			return builder.UpdateQueryResult{}, err
 		}

@@ -180,3 +180,39 @@ err := db.UseModel(User{}).
     Where("email = ?", email).
     First(&user)
 ```
+
+## Komposisi subquery
+
+Susun child builder melalui transaction yang sama. Child disimpan sebagai
+snapshot: perubahan builder asal sesudah komposisi tidak mengubah parent.
+Dialect, placeholder, identifier quoting dan urutan argument mengikuti parent,
+termasuk offset setelah nilai SET pada UPDATE. Child nil/invalid atau alias
+invalid menghasilkan error sebelum eksekusi. Alias derived table harus berupa
+identifier sederhana dan tidak memakai AS.
+
+```go
+eligible := tx.UseModel(UserRole{}).
+    Select("user_id").Where("status = ?", "ACTIVE")
+
+q := tx.UseModel(User{}).
+    WhereExists(tx.UseModel(UserRole{}).
+        Select("user_id").Where("user_id = users.id").Where("status = ?", "ACTIVE"))
+
+q = q.WhereInQuery("users.id", eligible)
+q = q.WhereNotExists(tx.UseModel(UserRole{}).
+    Select("user_id").Where("user_id = users.id").Where("status = ?", "REVOKED"))
+
+names := tx.UseModel(UserRole{}).
+    Select("user_id", "MIN(role_name) AS first_name").
+    Where("status = ?", "ACTIVE").GroupBy("user_id")
+q = q.LeftJoinQuery(names, "role_names", "role_names.user_id = users.id")
+
+preview, err := q.DryRun()
+count, err := q.DryRunCount()
+```
+
+DryRun, count dan pagination tidak mengubah builder asal. WhereExists,
+WhereNotExists dan WhereInQuery juga tersedia pada Updates/DryRunUpdates.
+Column, projection, correlation dan ON tetap berupa expression tepercaya seperti
+Where existing; whitelist identifier dan bind nilai request sebagai argument.
+Caller tidak perlu menulis SELECT utuh atau mengganti placeholder sendiri.

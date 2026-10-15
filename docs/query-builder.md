@@ -180,3 +180,38 @@ err := db.UseModel(User{}).
     Where("email = ?", email).
     First(&user)
 ```
+
+## Composable subqueries
+
+Compose child builders on the same transaction. Children are snapshots: later
+builder edits do not change a previously composed parent. Rendering uses the
+parent dialect, placeholder mode and identifier configuration, including nested
+arguments after UPDATE SET values. A nil/invalid child or invalid derived alias
+fails before execution. Derived aliases use a simple identifier without AS.
+
+```go
+eligible := tx.UseModel(UserRole{}).
+    Select("user_id").Where("status = ?", "ACTIVE")
+
+q := tx.UseModel(User{}).
+    WhereExists(tx.UseModel(UserRole{}).
+        Select("user_id").Where("user_id = users.id").Where("status = ?", "ACTIVE"))
+
+q = q.WhereInQuery("users.id", eligible)
+q = q.WhereNotExists(tx.UseModel(UserRole{}).
+    Select("user_id").Where("user_id = users.id").Where("status = ?", "REVOKED"))
+
+names := tx.UseModel(UserRole{}).
+    Select("user_id", "MIN(role_name) AS first_name").
+    Where("status = ?", "ACTIVE").GroupBy("user_id")
+q = q.LeftJoinQuery(names, "role_names", "role_names.user_id = users.id")
+
+preview, err := q.DryRun()
+count, err := q.DryRunCount()
+```
+
+`DryRun`, count and pagination preserve child/parent builders. `WhereExists`,
+`WhereNotExists` and `WhereInQuery` also work with `Updates` and `DryRunUpdates`.
+Expressions (columns, projections, correlations and ON) remain trusted SQL
+structure; bind request values and whitelist identifiers as with existing Where.
+Neither a complete SELECT string nor placeholder rewriting is needed in callers.

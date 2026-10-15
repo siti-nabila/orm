@@ -251,3 +251,22 @@ adapter also exposes `DryRunUpdateBulk`.
 ## Not Implemented
 
 Delete APIs are not part of this repository.
+
+## Insert result without generated ID
+
+```go
+result, err := tx.CreateWith(&assignment).ExecResult()
+if err != nil {
+    return err
+}
+rows, err := result.RowsAffected()
+```
+
+`ExecResult` uses the same mapper, dialect builder and SQL/args as
+`tx.CreateWith(&assignment).DryRun()` without returning intent (`Mode=exec`).
+It returns the execution result/error and does not read LastInsertId, assign a
+primary key, or finalize the transaction. Callers decide whether zero/multiple
+rows or a RowsAffected error are acceptable. WithReturning is rejected before
+execution. Existing Create, Exec, Scan, ScanInto and DryRun keep their behavior.
+Use an insert-specific model to preserve omitted database defaults; explicit
+zero values and nullable fields follow the existing mapper rules.
